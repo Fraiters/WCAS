@@ -4,6 +4,7 @@ from aiogram.dispatcher import Dispatcher
 from aiogram.utils import executor
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from general.general_handlers import GeneralHandler
+from tasks.handlers.task_handler import TaskHandler
 
 
 class TelegramBot:
@@ -14,8 +15,10 @@ class TelegramBot:
 
     def run(self):
         general_handler = GeneralHandler(bot=self.bot)
+        task_handler = TaskHandler(bot=self.bot)
 
         general_handler.registration(dp=self.dp)
+        task_handler.registration(dp=self.dp)
 
         executor.start_polling(dispatcher=self.dp, skip_updates=True)
 
