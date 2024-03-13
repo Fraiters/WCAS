@@ -1,1 +1,1 @@
-from general import general_handlers, general_keyboards
+from general import general_handler, general_keyboard

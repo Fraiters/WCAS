@@ -96,7 +96,7 @@ class TaskHandler:
 
     async def prepare_executor_id(self, message: Message, state: FSMContext):
         """Подготовка к вводу id исполнителя"""
-        if message.text == "/Нет":
+        if message.text == TASK_BUTTONS.get("prepare_executor_id")[1]:
             async with state.proxy() as data:
                 data['status'] = TASK_STATUS[0]
                 self.task = Task(message=message)
@@ -107,7 +107,7 @@ class TaskHandler:
             kb = self.task_kb.add(TASK_BUTTONS.get("check_task"))
             await self.bot.send_message(message.from_user.id, "Все верно?", reply_markup=kb)
 
-        elif message.text == "/Да":
+        elif message.text == TASK_BUTTONS.get("prepare_executor_id")[0]:
             await self.fsm_task.next()
             await message.reply('Введите id исполнителя задачи через @', reply_markup=ReplyKeyboardRemove())
 
@@ -137,6 +137,10 @@ class TaskHandler:
             await self.bot.send_message(message.from_user.id, "Задача создана и сохранена",
                                         reply_markup=ReplyKeyboardRemove())
             await state.finish()
+        else:
+            kb = self.task_kb.add(TASK_BUTTONS.get("check_task"))
+            await message.reply('Такой команды нет\n'
+                                'Повторите попытку', reply_markup=kb)
 
     def registration(self, dp: Dispatcher):
         """Регистрация хендлеров для задач"""

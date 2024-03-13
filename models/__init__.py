@@ -1,1 +1,1 @@
-from models import task
+from models import task, report

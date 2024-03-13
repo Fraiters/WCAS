@@ -1,7 +1,7 @@
 from aiogram import Bot, Dispatcher
 from aiogram.types import Message
 from settings import GENERAL_BUTTONS
-from general.general_keyboards import GeneralKb
+from general.general_keyboard import GeneralKb
 
 
 class GeneralHandler:
