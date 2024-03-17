@@ -6,6 +6,7 @@ from aiogram.types import Message
 from aiogram.types import ReplyKeyboardRemove
 from settings import TASK_BUTTONS
 from models.task import Task, TASK_STATUS
+from tasks.db.task_db import TaskBaseDb
 from tasks.keyboards.task_kb import TaskKb
 from utils.utils import is_datetime
 
@@ -25,10 +26,11 @@ class FsmTask(StatesGroup):
 class TaskHandler:
     """Класс хендлеров для задач """
 
-    def __init__(self, bot: Bot):
+    def __init__(self, bot: Bot, db_name: str):
         self.bot = bot
         self.task_kb = TaskKb()
         self.fsm_task = FsmTask()
+        self.task_db = TaskBaseDb(db_name=db_name)
         self.task = ...  # type: Task
 
     async def tasks(self, message: Message):
@@ -55,6 +57,7 @@ class TaskHandler:
         """Загрузка заголовка задачи"""
         async with state.proxy() as data:
             data['title'] = message.text
+            # TO DO: добавить отловку исключения на создание не уникального title
         await self.fsm_task.next()
         await message.reply('Введите описание задачи', reply_markup=ReplyKeyboardRemove())
 
@@ -134,7 +137,13 @@ class TaskHandler:
             await message.reply("Введите заголовок задачи:", reply_markup=ReplyKeyboardRemove())
 
         elif message.text == TASK_BUTTONS.get("check_task")[0]:
-            await self.bot.send_message(message.from_user.id, "Задача создана и сохранена",
+            db_data = self.task.to_dict()
+            await self.task_db.insert_record_task(data=db_data)
+            uuid = await self.task_db.select_uuid_by_title(title=self.task.title)
+            await self.task.set_uuid(uuid=uuid)
+
+            await self.bot.send_message(message.from_user.id, "Задача создана и сохранена\n"
+                                                              f"id задачи: {self.task.uuid}",
                                         reply_markup=ReplyKeyboardRemove())
             await state.finish()
         else:
