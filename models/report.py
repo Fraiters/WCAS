@@ -9,6 +9,8 @@ class Report:
     def __init__(self, message: Message):
         self.message = message
 
+        self.uuid = ...  # type: int
+        self.title = ...  # type: str
         self.title_related_task = ...  # type: str
         self.id_related_task = ...  # type: int
         self.description = ...  # type: str
@@ -18,12 +20,16 @@ class Report:
 
     def from_dict(self, data: Dict):
         """Перевод из словаря в данные 'отчета' """
+        self.title = data.get("title")
+        self.title_related_task = data.get("title_related_task")
         self.id_related_task = data.get("id_related_task")
         self.description = str(data.get("description"))
 
     def to_dict(self):
         """Перевод из данных 'отчета' в словарь"""
         data = {
+            "title": self.title,
+            "title_related_task": self.title_related_task,
             "id_related_task": self.id_related_task,
             "description": self.description,
             "author": self.author,
@@ -32,10 +38,14 @@ class Report:
         }
         return data
 
+    async def set_uuid(self, uuid: int):
+        self.uuid = uuid
+
     async def print_info(self):
         """Вывод данных об отчете в сообщении"""
-        await self.message.reply(f"Отчет по задаче: {self.title_related_task}\n"
-                                 f"(id связанной задачи: {self.id_related_task})\n"
+        await self.message.reply(f"Название отчета: {self.title}\n"
+                                 f"Отчет по задаче: {self.title_related_task}\n"
+                                 f"id связанной задачи: {self.id_related_task}\n"
                                  f"Содержание: \n{self.description}\n\n"
                                  f"Автор: {self.author}\n"
                                  f"Дата составления отчета: {self.date}\n"

@@ -9,6 +9,7 @@ class Task:
     def __init__(self, message: Message):
         self.message = message
 
+        self.uuid = ...  # type: int
         self.title = ...  # type: str
         self.description = ...  # type: str
         self.status = ...  # type: str
@@ -44,8 +45,11 @@ class Task:
         }
         return data
 
+    async def set_uuid(self, uuid: int):
+        self.uuid = uuid
+
     async def print_info(self):
-        """Вывод данных о задачи в сообщении"""
+        """Вывод всех данных о задачи в сообщении"""
 
         if self.executor_id is None:
             self.executor_id = "Не назначен"
