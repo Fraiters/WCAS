@@ -26,6 +26,8 @@ class FsmTask(StatesGroup):
     show_by_executor_id = State()
     show_by_uuid = State()
 
+    delete_task = State()
+
 
 class TaskHandler:
     """ Класс хендлеров для задач """
@@ -61,6 +63,13 @@ class TaskHandler:
         kb = self.task_kb.add(TASK_BUTTONS.get("show_tasks"))
         await message.reply("Выберите параметры просмотра", reply_markup=kb)
 
+    # Уровень клавиатуры 2
+    # Удалить задачу:
+    async def input_delete_task(self, message: Message):
+        """ Хендлер для ввода id для удаления задачи """
+        await self.fsm_task.delete_task.set()
+        await message.reply("Введите id задачи, которую хотели бы удалить", reply_markup=ReplyKeyboardRemove())
+
     async def cancel(self, message: Message, state: FSMContext):
         """ Выход из машины состояний """
         current_state = await state.get_state()
@@ -69,6 +78,25 @@ class TaskHandler:
         await state.finish()
         kb = self.task_kb.add(GENERAL_BUTTONS)
         await self.bot.send_message(message.from_user.id, 'Главное меню', reply_markup=kb)
+
+    async def delete_task(self, message: Message, state: FSMContext):
+        """ Хендлер для команды 'Удалить задачу' """
+        try:
+            uuid = int(message.text)
+            db_task = await self.task_db.select_task_by_uuid(uuid=uuid)
+            if db_task is None:
+                await message.reply(f'Задачи с id = {uuid} не существует\n'
+                                    'Повторите попытку')
+            else:
+                await self.task_db.delete_task(uuid=uuid)
+                await state.finish()
+                kb = self.task_kb.add(GENERAL_BUTTONS)
+                await self.bot.send_message(message.from_user.id, f'Задача с id = {uuid} успешно удалена',
+                                            reply_markup=kb)
+
+        except ValueError:
+            await message.reply('Неверный формат записи id\n'
+                                'Повторите попытку')
 
     async def show_all_tasks(self, message: Message):
         """ Хендлер для команды 'Показать все задачи' """
@@ -145,14 +173,12 @@ class TaskHandler:
         try:
             uuid = int(message.text)
             db_task = await self.task_db.select_task_by_uuid(uuid=uuid)
-            print(db_task)
             if db_task is None:
                 await message.reply(f'Отчета с id = {uuid} не существует\n'
                                     'Повторите попытку')
             else:
                 task = Task(message=message)
                 for uuid, title, description, status, priority, deadline, executor_type, executor_id in [db_task]:
-                    task = Task(message=message)
                     task.uuid = uuid
                     task.title = title
                     task.description = description
@@ -286,10 +312,14 @@ class TaskHandler:
                                     state=None)
         dp.register_message_handler(callback=self.show_task, commands=['Показать_задачу'],
                                     state=None)
+        dp.register_message_handler(callback=self.input_delete_task, commands=['Удалить_задачу'],
+                                    state=None)
         dp.register_message_handler(callback=self.cancel, commands=['Отмена'],
                                     state='*')
         dp.register_message_handler(self.cancel, Text(equals='Отмена', ignore_case=True),
                                     state='*')
+
+        # Добавление задачи
         dp.register_message_handler(callback=self.load_title,
                                     state=self.fsm_task.title)
         dp.register_message_handler(callback=self.load_description,
@@ -306,7 +336,7 @@ class TaskHandler:
                                     state=self.fsm_task.executor_id)
         dp.register_message_handler(callback=self.check_task,
                                     state=self.fsm_task.check_task)
-        # Просмотр отчета
+        # Просмотр задачи
         dp.register_message_handler(callback=self.show_all_tasks, commands=['Показать_все_задачи'],
                                     state=None)
         dp.register_message_handler(callback=self.input_executor_id, commands=['Показать_задачи_по_id_исполнителя'],
@@ -317,3 +347,7 @@ class TaskHandler:
                                     state=self.fsm_task.show_by_executor_id)
         dp.register_message_handler(callback=self.show_task_by_uuid,
                                     state=self.fsm_task.show_by_uuid)
+
+        # Удаление задачи
+        dp.register_message_handler(callback=self.delete_task,
+                                    state=self.fsm_task.delete_task)

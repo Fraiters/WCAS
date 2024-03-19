@@ -22,6 +22,8 @@ class FsmReport(StatesGroup):
     show_by_user_id = State()
     show_by_uuid = State()
 
+    delete_report = State()
+
 
 class ReportHandler:
     """ Класс хендлеров для отчетов """
@@ -35,7 +37,7 @@ class ReportHandler:
         self.report = ...  # type: Report
 
     # Уровень клавиатуры 1
-    # /Добавить отчет, /Показать отчет
+    # /Добавить отчет, /Показать отчет, /Удалить отчет
     async def reports(self, message: Message):
         """ Хендлер для команды 'Отчеты' """
         kb = self.report_kb.add(REPORT_BUTTONS.get("report"))
@@ -59,6 +61,13 @@ class ReportHandler:
         kb = self.report_kb.add(REPORT_BUTTONS.get("show_reports"))
         await message.reply("Выберите параметры просмотра", reply_markup=kb)
 
+    # Уровень клавиатуры 2
+    # Удалить отчет:
+    async def input_delete_report(self, message: Message):
+        """ Хендлер для ввода id для удаления отчета """
+        await self.fsm_report.delete_report.set()
+        await message.reply("Введите id отчета, который хотели бы удалить", reply_markup=ReplyKeyboardRemove())
+
     async def cancel(self, message: Message, state: FSMContext):
         """Выход из машины состояний"""
         current_state = await state.get_state()
@@ -67,6 +76,25 @@ class ReportHandler:
         await state.finish()
         kb = self.report_kb.add(GENERAL_BUTTONS)
         await self.bot.send_message(message.from_user.id, 'Главное меню', reply_markup=kb)
+
+    async def delete_report(self, message: Message, state: FSMContext):
+        """ Хендлер для команды 'Удалить отчет' """
+        try:
+            uuid = int(message.text)
+            db_report = await self.report_db.select_report_by_uuid(uuid=uuid)
+            if db_report is None:
+                await message.reply(f'Отчета с id = {uuid} не существует\n'
+                                    'Повторите попытку')
+            else:
+                await self.report_db.delete_report(uuid=uuid)
+                await state.finish()
+                kb = self.report_kb.add(GENERAL_BUTTONS)
+                await self.bot.send_message(message.from_user.id, f'Отчет с id = {uuid} успешно удален',
+                                            reply_markup=kb)
+
+        except ValueError:
+            await message.reply('Неверный формат записи id\n'
+                                'Повторите попытку')
 
     async def show_all_reports(self, message: Message):
         """ Хендлер для команды 'Показать все отчеты' """
@@ -241,6 +269,8 @@ class ReportHandler:
                                     state=None)
         dp.register_message_handler(callback=self.show_report, commands=['Показать_отчет'],
                                     state=None)
+        dp.register_message_handler(callback=self.input_delete_report, commands=['Удалить_отчет'],
+                                    state=None)
         dp.register_message_handler(callback=self.cancel, commands=['Отмена'],
                                     state='*')
         dp.register_message_handler(self.cancel, Text(equals='Отмена', ignore_case=True),
@@ -265,3 +295,6 @@ class ReportHandler:
                                     state=self.fsm_report.show_by_user_id)
         dp.register_message_handler(callback=self.show_report_by_uuid,
                                     state=self.fsm_report.show_by_uuid)
+        # Удаление отчета
+        dp.register_message_handler(callback=self.delete_report,
+                                    state=self.fsm_report.delete_report)
