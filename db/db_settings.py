@@ -9,6 +9,9 @@ DB_TASKS_COMMANDS = {
                    'VALUES (?, ?, ?, ?, ?, ?, ?)',
     "select_uuid_by_title": 'SELECT uuid FROM tasks WHERE title = ?',
     "select_title_by_uuid": 'SELECT title FROM tasks WHERE uuid = ?',
+    "select_all_tasks": 'SELECT uuid, title FROM tasks',
+    "select_task_by_executor_id": 'SELECT * FROM tasks WHERE executor_id = ?',
+    "select_task_by_uuid": 'SELECT * FROM tasks WHERE uuid = ?'
 }
 
 # Команды БД для отчета
@@ -20,4 +23,7 @@ DB_REPORTS_COMMANDS = {
                      'date, time) '
                      'VALUES (?, ?, ?, ?, ?, ?, ?)',
     "select_uuid_by_title": 'SELECT uuid FROM reports WHERE title = ?',
+    "select_all_reports": 'SELECT uuid, title FROM reports',
+    "select_report_by_user_id": 'SELECT * FROM reports WHERE author = ?',
+    "select_report_by_uuid": 'SELECT * FROM reports WHERE uuid = ?'
 }

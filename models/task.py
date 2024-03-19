@@ -1,5 +1,4 @@
 from typing import Dict
-from datetime import datetime
 from aiogram.types import Message
 
 
@@ -14,9 +13,9 @@ class Task:
         self.description = ...  # type: str
         self.status = ...  # type: str
         self.priority = ...  # type: str
-        self.deadline = ...  # type: datetime
+        self.deadline = ...  # type: str
         self.executor_type = ...  # type: str
-        self.executor_id = ...  # type: int
+        self.executor_id = ...  # type: str
 
     def from_dict(self, data: Dict):
         """Перевод из словаря в данные 'задачи' """
