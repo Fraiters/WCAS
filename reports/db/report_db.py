@@ -45,3 +45,8 @@ class ReportBaseDb(BaseDb):
         command = DB_REPORTS_COMMANDS.get("select_report_by_uuid")
         result = await self.select_one_by(command=command, data=uuid)
         return result
+
+    async def delete_report(self, uuid: int):
+        """ Удаление задачи """
+        command = DB_REPORTS_COMMANDS.get("delete_report")
+        await self.delete_record(command=command, data=uuid)
