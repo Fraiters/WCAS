@@ -1,7 +1,7 @@
 import sqlite3
 from sqlite3 import Cursor
 from sqlite3 import Connection
-from typing import Dict, Union, Tuple
+from typing import Dict, Union, Tuple, List
 
 
 class BaseDb:
@@ -22,8 +22,20 @@ class BaseDb:
         self.cursor.execute(command, tuple(data.values()))
         self.connection.commit()
 
-    async def select_by(self, command: str, data: Union[str, int]) -> Union[Tuple, None]:
+    async def select_one_by(self, command: str, data: Union[str, int]) -> Union[Tuple, None]:
         """ Выбор записи из таблицы БД по одному признаку """
         self.cursor.execute(command, (data,))
         result = self.cursor.fetchone()
+        return result
+
+    async def select_many_by(self, command: str, data: Union[str, int]) -> Union[List[Tuple], None]:
+        """ Выбор всех записей из таблицы БД по одному признаку """
+        self.cursor.execute(command, (data,))
+        result = self.cursor.fetchall()
+        return result
+
+    async def select_all(self, command: str) -> Union[List[Tuple], None]:
+        """ Выбор всех записей из таблицы БД """
+        self.cursor.execute(command)
+        result = self.cursor.fetchall()
         return result
