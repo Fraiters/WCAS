@@ -47,7 +47,12 @@ class TaskBaseDb(BaseDb):
         return result
 
     async def select_task_by_uuid(self, uuid: int) -> Union[Tuple, None]:
-        """ Выбор отчета по названию задачи """
+        """ Выбор задачи по уникальному id """
         command = DB_TASKS_COMMANDS.get("select_task_by_uuid")
         result = await self.select_one_by(command=command, data=uuid)
         return result
+
+    async def delete_task(self, uuid: int):
+        """ Удаление задачи """
+        command = DB_TASKS_COMMANDS.get("delete_task")
+        await self.delete_record(command=command, data=uuid)

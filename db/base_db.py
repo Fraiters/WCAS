@@ -39,3 +39,8 @@ class BaseDb:
         self.cursor.execute(command)
         result = self.cursor.fetchall()
         return result
+
+    async def delete_record(self, command: str, data: int):
+        """ Удаление записи из таблицы БД """
+        self.cursor.execute(command, (data,))
+        self.connection.commit()
