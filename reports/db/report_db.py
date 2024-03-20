@@ -47,6 +47,11 @@ class ReportBaseDb(BaseDb):
         return result
 
     async def delete_report(self, uuid: int):
-        """ Удаление задачи """
+        """ Удаление отчета """
         command = DB_REPORTS_COMMANDS.get("delete_report")
         await self.delete_record(command=command, data=uuid)
+
+    async def update_report(self, data: Dict, uuid: int):
+        """ Обновление записи в таблице отчетов """
+        command = DB_REPORTS_COMMANDS.get("update_report")
+        await self.update_record(command=command, data=data, uuid=uuid)

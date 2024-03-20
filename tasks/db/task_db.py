@@ -56,3 +56,8 @@ class TaskBaseDb(BaseDb):
         """ Удаление задачи """
         command = DB_TASKS_COMMANDS.get("delete_task")
         await self.delete_record(command=command, data=uuid)
+
+    async def update_task(self, data: Dict, uuid: int):
+        """ Обновление записи в таблице задач """
+        command = DB_TASKS_COMMANDS.get("update_task")
+        await self.update_record(command=command, data=data, uuid=uuid)

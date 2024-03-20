@@ -13,6 +13,8 @@ DB_TASKS_COMMANDS = {
     "select_task_by_executor_id": 'SELECT * FROM tasks WHERE executor_id = ?',
     "select_task_by_uuid": 'SELECT * FROM tasks WHERE uuid = ?',
     "delete_task": 'DELETE FROM tasks WHERE uuid = ?',
+    "update_task": 'UPDATE tasks SET title = ?, description = ?, status = ?, priority = ?, deadline = ?, '
+                   'executor_type = ?, executor_id = ? WHERE uuid = ?',
 }
 
 # Команды БД для отчета
@@ -28,4 +30,6 @@ DB_REPORTS_COMMANDS = {
     "select_report_by_user_id": 'SELECT * FROM reports WHERE author = ?',
     "select_report_by_uuid": 'SELECT * FROM reports WHERE uuid = ?',
     "delete_report": 'DELETE FROM reports WHERE uuid = ?',
+    "update_report": 'UPDATE reports SET title = ?, title_related_task = ?, id_related_task = ?, '
+                     'description = ?, author = ?, date = ?, time = ? WHERE uuid = ?',
 }

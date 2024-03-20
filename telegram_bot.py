@@ -21,6 +21,7 @@ class TelegramBot:
     async def on_startup(self, _):
         await self.db.create_table(command=DB_TASKS_COMMANDS.get('create_task_table'))
         await self.db.create_table(command=DB_REPORTS_COMMANDS.get('create_report_table'))
+        await self.db.close_connection()
 
     def run(self):
         general_handler = GeneralHandler(bot=self.bot)
