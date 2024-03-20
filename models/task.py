@@ -1,14 +1,13 @@
-from typing import Dict
+from typing import Dict, Union
 from aiogram.types import Message
 
 
 class Task:
     """Класс Задача"""
 
-    def __init__(self, message: Message):
-        self.message = message
+    def __init__(self):
 
-        self.uuid = ...  # type: int
+        self.uuid = None  # type: Union[int, None]
         self.title = ...  # type: str
         self.description = ...  # type: str
         self.status = ...  # type: str
@@ -47,19 +46,19 @@ class Task:
     async def set_uuid(self, uuid: int):
         self.uuid = uuid
 
-    async def print_info(self):
+    async def print_info(self, message: Message):
         """Вывод всех данных о задачи в сообщении"""
 
         if self.executor_id is None:
             self.executor_id = "Не назначен"
 
-        await self.message.reply(f"Название задачи: {self.title}\n\n"
-                                 f"Описание: \n{self.description}\n"
-                                 f"Готовность: {self.status}\n"
-                                 f"Приоритет: {self.priority}\n"
-                                 f"Срок выполнения: {self.deadline}\n"
-                                 f"Тип исполнителя: {self.executor_type}\n"
-                                 f"Исполнитель: {self.executor_id}\n")
+        await message.reply(f"Название задачи: {self.title}\n\n"
+                            f"Описание: \n{self.description}\n"
+                            f"Готовность: {self.status}\n"
+                            f"Приоритет: {self.priority}\n"
+                            f"Срок выполнения: {self.deadline}\n"
+                            f"Тип исполнителя: {self.executor_type}\n"
+                            f"Исполнитель: {self.executor_id}\n")
 
 
 # Статус задачи

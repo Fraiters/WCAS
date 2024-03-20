@@ -17,7 +17,10 @@ class FsmReport(StatesGroup):
     title = State()
     id_related_task = State()
     description = State()
-    check_report = State()
+    check_add_report = State()
+
+    upd_uuid = State()
+    check_upd_report = State()
 
     show_by_user_id = State()
     show_by_uuid = State()
@@ -37,12 +40,14 @@ class ReportHandler:
         self.report = ...  # type: Report
 
     # Уровень клавиатуры 1
-    # /Добавить отчет, /Показать отчет, /Удалить отчет
+    # /Добавить отчет, /Показать отчет, /Редактировать отчет, /Удалить отчет
     async def reports(self, message: Message):
         """ Хендлер для команды 'Отчеты' """
         kb = self.report_kb.add(REPORT_BUTTONS.get("report"))
-        await self.bot.send_message(message.from_user.id, 'Чтобы добавить отчет нажмите на "Добавить отчет"\n'
-                                                          'Чтобы посмотреть отчеты нажмите на "Показать"\n'
+        await self.bot.send_message(message.from_user.id, 'Чтобы добавить отчет нажмите на "/Добавить_отчет"\n\n'
+                                                          'Чтобы посмотреть отчеты нажмите на "/Показать_отчет"\n\n'
+                                                          'Чтобы обновить задачу нажмите на "/Редактировать_отчет"\n\n'
+                                                          'Чтобы удалить задачу нажмите на "/Удалить_отчет"\n\n'
                                                           'Для отмены введите команду "/Отмена"', reply_markup=kb)
 
     # Уровень клавиатуры 2
@@ -62,6 +67,14 @@ class ReportHandler:
         await message.reply("Выберите параметры просмотра", reply_markup=kb)
 
     # Уровень клавиатуры 2
+    # Редактировать отчет:
+    async def upd_report(self, message: Message):
+        """ Хендлер для команды 'Редактировать отчет' (Вход в машину состояний) """
+        self.report = Report()
+        await self.fsm_report.upd_uuid.set()
+        await message.reply("Введите id отчета, который хотели бы изменить", reply_markup=ReplyKeyboardRemove())
+
+    # Уровень клавиатуры 2
     # Удалить отчет:
     async def input_delete_report(self, message: Message):
         """ Хендлер для ввода id для удаления отчета """
@@ -69,13 +82,51 @@ class ReportHandler:
         await message.reply("Введите id отчета, который хотели бы удалить", reply_markup=ReplyKeyboardRemove())
 
     async def cancel(self, message: Message, state: FSMContext):
-        """Выход из машины состояний"""
+        """ Выход из машины состояний """
         current_state = await state.get_state()
         if current_state is None:
             return
         await state.finish()
         kb = self.report_kb.add(GENERAL_BUTTONS)
         await self.bot.send_message(message.from_user.id, 'Главное меню', reply_markup=kb)
+
+    async def load_upd_uuid(self, message: Message):
+        """ Загрузка id отчета, который необходимо изменить """
+        try:
+            uuid = int(message.text)
+            db_report = await self.report_db.select_report_by_uuid(uuid=uuid)
+            if db_report is None:
+                await message.reply(f'Отчета с id = {uuid} не существует\n'
+                                    'Повторите попытку')
+            else:
+                await self.report.set_uuid(uuid=uuid)
+                await self.fsm_report.title.set()
+                await message.reply("Введите заголовок отчета", reply_markup=ReplyKeyboardRemove())
+        except ValueError:
+            await message.reply('Неверный формат записи id\n'
+                                'Повторите попытку')
+
+    async def check_upd_report(self, message: Message, state: FSMContext):
+        """ Проверка измененного отчета """
+        if message.text == REPORT_BUTTONS.get("check_report")[1]:
+            await state.reset_data()
+            await self.fsm_report.title.set()
+            await message.reply("Введите заголовок отчета:", reply_markup=ReplyKeyboardRemove())
+
+        elif message.text == REPORT_BUTTONS.get("check_report")[0]:
+            db_data = self.report.to_dict()
+            uuid = self.report.uuid
+            await self.report_db.update_report(data=db_data, uuid=uuid)
+            await self.bot.send_message(message.from_user.id, "Отчет изменен и сохранен\n"
+                                                              f"id отчета: {self.report.uuid}",
+                                        reply_markup=ReplyKeyboardRemove())
+            await state.finish()
+            kb = self.report_kb.add(GENERAL_BUTTONS)
+            await self.bot.send_message(message.from_user.id, 'Главное меню', reply_markup=kb)
+        else:
+            kb = self.report_kb.add(REPORT_BUTTONS.get("check_report"))
+            await message.reply('Такой команды нет\n'
+                                'Повторите попытку', reply_markup=kb)
 
     async def delete_report(self, message: Message, state: FSMContext):
         """ Хендлер для команды 'Удалить отчет' """
@@ -103,7 +154,7 @@ class ReportHandler:
         reports = []  # type: List[Report]
 
         for uuid, title in db_reports:
-            report = Report(message=message)
+            report = Report()
             report.uuid = uuid
             report.title = title
             reports.append(report)
@@ -116,14 +167,14 @@ class ReportHandler:
         await self.bot.send_message(message.from_user.id, 'Главное меню', reply_markup=kb)
 
     async def input_user_id(self, message: Message):
-        """Хендлер для ввода user_id для команды 'Показать отчет по id исполнителя' """
+        """ Хендлер для ввода user_id для команды 'Показать отчет по id исполнителя' """
 
         await self.fsm_report.show_by_user_id.set()
         await self.bot.send_message(message.from_user.id, "Введите id исполнителя (через @)",
                                     reply_markup=ReplyKeyboardRemove())
 
     async def show_report_by_user_id(self, message: Message, state: FSMContext):
-        """Хендлер для команды 'Показать отчет по id исполнителя' """
+        """ Хендлер для команды 'Показать отчет по id исполнителя' """
         user_id = message.text
         db_reports = await self.report_db.select_report_by_user_id(user_id=user_id)
         reports = []  # type: List[Report]
@@ -133,7 +184,7 @@ class ReportHandler:
                                 'Повторите попытку', reply_markup=ReplyKeyboardRemove())
         else:
             for uuid, title, title_related_task, id_related_task, description, author, date, time in db_reports:
-                report = Report(message=message)
+                report = Report()
                 report.uuid = uuid
                 report.title = title
                 report.title_related_task = title_related_task
@@ -159,14 +210,14 @@ class ReportHandler:
             await self.bot.send_message(message.from_user.id, 'Главное меню', reply_markup=kb)
 
     async def input_uuid(self, message: Message):
-        """Хендлер для ввода uuid для команды 'Показать отчет по уникальному id' """
+        """ Хендлер для ввода uuid для команды 'Показать отчет по уникальному id' """
 
         await self.fsm_report.show_by_uuid.set()
         await self.bot.send_message(message.from_user.id, "Введите уникальный id отчета",
                                     reply_markup=ReplyKeyboardRemove())
 
     async def show_report_by_uuid(self, message: Message, state: FSMContext):
-        """Хендлер для команды 'Показать отчет по уникальному id' """
+        """ Хендлер для команды 'Показать отчет по уникальному id' """
         try:
             uuid = int(message.text)
             db_report = await self.report_db.select_report_by_uuid(uuid=uuid)
@@ -174,7 +225,7 @@ class ReportHandler:
                 await message.reply(f'Отчета с id = {uuid} не существует\n'
                                     'Повторите попытку')
             else:
-                report = Report(message=message)
+                report = Report()
                 for uuid, title, title_related_task, id_related_task, description, author, date, time in [db_report]:
                     report.uuid = uuid
                     report.title = title
@@ -202,15 +253,15 @@ class ReportHandler:
                                 'Повторите попытку')
 
     async def load_title(self, message: Message, state: FSMContext):
-        """Загрузка заголовка отчета"""
+        """ Загрузка заголовка отчета """
         async with state.proxy() as data:
             data['title'] = message.text
             # TO DO: добавить отловку исключения на создание не уникального title
-        await self.fsm_report.next()
+        await self.fsm_report.id_related_task.set()
         await message.reply("Введите id связанной задачи", reply_markup=ReplyKeyboardRemove())
 
     async def load_id_related_task(self, message: Message, state: FSMContext):
-        """Загрузка id связанной задачи"""
+        """ Загрузка id связанной задачи """
         try:
             async with state.proxy() as data:
                 data['id_related_task'] = int(message.text)
@@ -220,28 +271,30 @@ class ReportHandler:
                     await message.reply(f'Задачи с id = {data["id_related_task"]} не существует\n'
                                         'Повторите попытку')
                 data['title_related_task'] = title_related_task[0]
-            await self.fsm_report.next()
+            await self.fsm_report.description.set()
             await message.reply('Введите содержание отчета', reply_markup=ReplyKeyboardRemove())
         except ValueError:
             await message.reply('Неверный формат записи id\n'
                                 'Повторите попытку')
 
     async def load_description(self, message: Message, state: FSMContext):
-        """Загрузка содержания"""
+        """ Загрузка содержания """
         async with state.proxy() as data:
             data['description'] = message.text
-
-        async with state.proxy() as data:
-            self.report = Report(message=message)
+            await self.report.set_author(message=message)
             self.report.from_dict(data=data)
-            await self.report.print_info()
+            await self.report.print_info(message=message)
 
-        await self.fsm_report.check_report.set()
+        if self.report.uuid is None:
+            await self.fsm_report.check_add_report.set()
+        else:
+            await self.fsm_report.check_upd_report.set()
+
         kb = self.report_kb.add(REPORT_BUTTONS.get("check_report"))
         await self.bot.send_message(message.from_user.id, "Все верно?", reply_markup=kb)
 
-    async def check_report(self, message: Message, state: FSMContext):
-        """Проверка отчета"""
+    async def check_add_report(self, message: Message, state: FSMContext):
+        """ Проверка отчета """
         if message.text == REPORT_BUTTONS.get("check_report")[1]:
             await self.fsm_report.id_related_task.set()
             await self.bot.send_message(message.from_user.id, "Введите id связанной задачи",
@@ -269,21 +322,29 @@ class ReportHandler:
                                     state=None)
         dp.register_message_handler(callback=self.show_report, commands=['Показать_отчет'],
                                     state=None)
+        dp.register_message_handler(callback=self.upd_report, commands=['Редактировать_отчет'],
+                                    state=None)
         dp.register_message_handler(callback=self.input_delete_report, commands=['Удалить_отчет'],
                                     state=None)
         dp.register_message_handler(callback=self.cancel, commands=['Отмена'],
                                     state='*')
         dp.register_message_handler(self.cancel, Text(equals='Отмена', ignore_case=True),
                                     state='*')
-        # Создание отчета
+        # Создание и обновление отчета
         dp.register_message_handler(callback=self.load_title,
                                     state=self.fsm_report.title)
         dp.register_message_handler(callback=self.load_id_related_task,
                                     state=self.fsm_report.id_related_task)
         dp.register_message_handler(callback=self.load_description,
                                     state=self.fsm_report.description)
-        dp.register_message_handler(callback=self.check_report,
-                                    state=self.fsm_report.check_report)
+        dp.register_message_handler(callback=self.check_add_report,
+                                    state=self.fsm_report.check_add_report)
+
+        dp.register_message_handler(callback=self.load_upd_uuid,
+                                    state=self.fsm_report.upd_uuid)
+        dp.register_message_handler(callback=self.check_upd_report,
+                                    state=self.fsm_report.check_upd_report)
+
         # Просмотр отчета
         dp.register_message_handler(callback=self.show_all_reports, commands=['Показать_все_отчеты'],
                                     state=None)

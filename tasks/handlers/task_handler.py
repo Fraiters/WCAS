@@ -21,7 +21,10 @@ class FsmTask(StatesGroup):
     executor_type = State()
     prepare_executor_id = State()
     executor_id = State()
-    check_task = State()
+    check_add_task = State()
+
+    upd_uuid = State()
+    check_upd_task = State()
 
     show_by_executor_id = State()
     show_by_uuid = State()
@@ -40,18 +43,21 @@ class TaskHandler:
         self.task = ...  # type: Task
 
     # Уровень клавиатуры 1
-    # /Добавить задачу, /Показать задачу
+    # /Добавить задачу, /Показать задачу, /Редактировать задачу, /Удалить задачу
     async def tasks(self, message: Message):
         """ Хендлер для команды 'Задачи' """
         kb = self.task_kb.add(TASK_BUTTONS.get("task"))
-        await self.bot.send_message(message.from_user.id, 'Чтобы добавить задачу нажмите на "/Добавить_задачу" \n'
-                                                          'Чтобы посмотреть отчеты нажмите на "Показать"'
-                                                          'для отмены введите команду "/Отмена"', reply_markup=kb)
+        await self.bot.send_message(message.from_user.id, 'Чтобы добавить задачу нажмите на "/Добавить_задачу"\n\n'
+                                                          'Чтобы посмотреть отчеты нажмите на "/Показать"\n\n'
+                                                          'Чтобы обновить задачу нажмите на "/Редактировать_задачу"\n\n'
+                                                          'Чтобы удалить задачу нажмите на "/Удалить_задачу"\n\n'
+                                                          'Для отмены введите команду "/Отмена"', reply_markup=kb)
 
     # Уровень клавиатуры 2
     # Добавить задачу:
     async def add_task(self, message: Message):
         """ Хендлер для команды 'Добавить задачу' (Вход в машину состояний) """
+        self.task = Task()
         await self.fsm_task.title.set()
         await message.reply("Введите заголовок задачи", reply_markup=ReplyKeyboardRemove())
 
@@ -62,6 +68,14 @@ class TaskHandler:
         """ Хендлер для команды 'Показать задачу' """
         kb = self.task_kb.add(TASK_BUTTONS.get("show_tasks"))
         await message.reply("Выберите параметры просмотра", reply_markup=kb)
+
+    # Уровень клавиатуры 2
+    # Редактировать задачу:
+    async def upd_task(self, message: Message):
+        """ Хендлер для команды 'Редактировать задачу' (Вход в машину состояний) """
+        self.task = Task()
+        await self.fsm_task.upd_uuid.set()
+        await message.reply("Введите id задачи, которую хотели бы изменить", reply_markup=ReplyKeyboardRemove())
 
     # Уровень клавиатуры 2
     # Удалить задачу:
@@ -78,6 +92,44 @@ class TaskHandler:
         await state.finish()
         kb = self.task_kb.add(GENERAL_BUTTONS)
         await self.bot.send_message(message.from_user.id, 'Главное меню', reply_markup=kb)
+
+    async def load_upd_uuid(self, message: Message):
+        """ Загрузка id задачи, которую необходимо изменить """
+        try:
+            uuid = int(message.text)
+            db_task = await self.task_db.select_task_by_uuid(uuid=uuid)
+            if db_task is None:
+                await message.reply(f'Задачи с id = {uuid} не существует\n'
+                                    'Повторите попытку')
+            else:
+                await self.task.set_uuid(uuid=uuid)
+                await self.fsm_task.title.set()
+                await message.reply("Введите заголовок задачи", reply_markup=ReplyKeyboardRemove())
+        except ValueError:
+            await message.reply('Неверный формат записи id\n'
+                                'Повторите попытку')
+
+    async def check_upd_task(self, message: Message, state: FSMContext):
+        """ Проверка измененной задачи """
+        if message.text == TASK_BUTTONS.get("check_task")[1]:
+            await state.reset_data()
+            await self.fsm_task.title.set()
+            await message.reply("Введите заголовок задачи:", reply_markup=ReplyKeyboardRemove())
+
+        elif message.text == TASK_BUTTONS.get("check_task")[0]:
+            db_data = self.task.to_dict()
+            uuid = self.task.uuid
+            await self.task_db.update_task(data=db_data, uuid=uuid)
+            await self.bot.send_message(message.from_user.id, "Задача изменена и сохранена\n"
+                                                              f"id задачи: {self.task.uuid}",
+                                        reply_markup=ReplyKeyboardRemove())
+            await state.finish()
+            kb = self.task_kb.add(GENERAL_BUTTONS)
+            await self.bot.send_message(message.from_user.id, 'Главное меню', reply_markup=kb)
+        else:
+            kb = self.task_kb.add(TASK_BUTTONS.get("check_task"))
+            await message.reply('Такой команды нет\n'
+                                'Повторите попытку', reply_markup=kb)
 
     async def delete_task(self, message: Message, state: FSMContext):
         """ Хендлер для команды 'Удалить задачу' """
@@ -105,7 +157,7 @@ class TaskHandler:
         tasks = []  # type: List[Task]
 
         for uuid, title in db_tasks:
-            task = Task(message=message)
+            task = Task()
             task.uuid = uuid
             task.title = title
             tasks.append(task)
@@ -135,7 +187,7 @@ class TaskHandler:
                                 'Повторите попытку', reply_markup=ReplyKeyboardRemove())
         else:
             for uuid, title, description, status, priority, deadline, executor_type, executor_id in db_tasks:
-                task = Task(message=message)
+                task = Task()
                 task.uuid = uuid
                 task.title = title
                 task.description = description
@@ -177,7 +229,7 @@ class TaskHandler:
                 await message.reply(f'Отчета с id = {uuid} не существует\n'
                                     'Повторите попытку')
             else:
-                task = Task(message=message)
+                task = Task()
                 for uuid, title, description, status, priority, deadline, executor_type, executor_id in [db_task]:
                     task.uuid = uuid
                     task.title = title
@@ -206,18 +258,18 @@ class TaskHandler:
                                 'Повторите попытку')
 
     async def load_title(self, message: Message, state: FSMContext):
-        """Загрузка заголовка задачи"""
+        """ Загрузка заголовка задачи """
         async with state.proxy() as data:
             data['title'] = message.text
             # TO DO: добавить отловку исключения на создание не уникального title
-        await self.fsm_task.next()
+        await self.fsm_task.description.set()
         await message.reply('Введите описание задачи', reply_markup=ReplyKeyboardRemove())
 
     async def load_description(self, message: Message, state: FSMContext):
-        """Загрузка описания"""
+        """ Загрузка описания """
         async with state.proxy() as data:
             data['description'] = message.text
-        await self.fsm_task.next()
+        await self.fsm_task.priority.set()
         kb = self.task_kb.add(TASK_BUTTONS.get("priority"))
         await message.reply('Выберите приоритет задачи', reply_markup=kb)
 
@@ -225,15 +277,15 @@ class TaskHandler:
         """Загрузка приоритета"""
         async with state.proxy() as data:
             data['priority'] = message.text[1:]
-        await self.fsm_task.next()
+        await self.fsm_task.deadline.set()
         await message.reply('Введите дедлайн для выполнения задачи dd.mm.yyyy', reply_markup=ReplyKeyboardRemove())
 
     async def load_deadline(self, message: Message, state: FSMContext):
-        """Загрузка дедлайна"""
+        """ Загрузка дедлайна """
         if is_datetime(date=message.text):
             async with state.proxy() as data:
                 data['deadline'] = message.text
-            await self.fsm_task.next()
+            await self.fsm_task.executor_type.set()
             kb = self.task_kb.add(TASK_BUTTONS.get("executor_type"))
             await message.reply('Выберите тип исполнителя', reply_markup=kb)
 
@@ -242,47 +294,52 @@ class TaskHandler:
                                 'Повторите попытку (правильный формат: dd.mm.yyyy)')
 
     async def load_executor_type(self, message: Message, state: FSMContext):
-        """Загрузка типа исполнителя"""
+        """ Загрузка типа исполнителя """
         async with state.proxy() as data:
             data['executor_type'] = message.text[1:]
-        await self.fsm_task.next()
+        await self.fsm_task.prepare_executor_id.set()
         kb = self.task_kb.add(TASK_BUTTONS.get("prepare_executor_id"))
         await message.reply('Желаете сразу назначить исполнителя задачи?', reply_markup=kb)
 
     async def prepare_executor_id(self, message: Message, state: FSMContext):
-        """Подготовка к вводу id исполнителя"""
+        """ Подготовка к вводу id исполнителя """
         if message.text == TASK_BUTTONS.get("prepare_executor_id")[1]:
             async with state.proxy() as data:
                 data['status'] = TASK_STATUS[0]
-                self.task = Task(message=message)
                 self.task.from_dict(data=data)
-                await self.task.print_info()
+                await self.task.print_info(message=message)
 
-            await self.fsm_task.check_task.set()
+            if self.task.uuid is None:
+                await self.fsm_task.check_add_task.set()
+            else:
+                await self.fsm_task.check_upd_task.set()
+
             kb = self.task_kb.add(TASK_BUTTONS.get("check_task"))
             await self.bot.send_message(message.from_user.id, "Все верно?", reply_markup=kb)
 
         elif message.text == TASK_BUTTONS.get("prepare_executor_id")[0]:
-            await self.fsm_task.next()
+            await self.fsm_task.executor_id.set()
             await message.reply('Введите id исполнителя задачи через @', reply_markup=ReplyKeyboardRemove())
 
     async def load_executor_id(self, message: Message, state: FSMContext):
-        """Загрузка id исполнителя"""
+        """ Загрузка id исполнителя """
+
         async with state.proxy() as data:
             data['executor_id'] = message.text
-
-        async with state.proxy() as data:
             data['status'] = TASK_STATUS[1]
-            self.task = Task(message=message)
             self.task.from_dict(data=data)
-            await self.task.print_info()
+            await self.task.print_info(message=message)
 
-        await self.fsm_task.check_task.set()
+        if self.task.uuid is None:
+            await self.fsm_task.check_add_task.set()
+        else:
+            await self.fsm_task.check_upd_task.set()
+
         kb = self.task_kb.add(TASK_BUTTONS.get("check_task"))
         await self.bot.send_message(message.from_user.id, "Все верно?", reply_markup=kb)
 
-    async def check_task(self, message: Message, state: FSMContext):
-        """Проверка задачи"""
+    async def check_add_task(self, message: Message, state: FSMContext):
+        """ Проверка добавленной задачи """
         if message.text == TASK_BUTTONS.get("check_task")[1]:
             await state.reset_data()
             await self.fsm_task.title.set()
@@ -312,6 +369,8 @@ class TaskHandler:
                                     state=None)
         dp.register_message_handler(callback=self.show_task, commands=['Показать_задачу'],
                                     state=None)
+        dp.register_message_handler(callback=self.upd_task, commands=['Редактировать_задачу'],
+                                    state=None)
         dp.register_message_handler(callback=self.input_delete_task, commands=['Удалить_задачу'],
                                     state=None)
         dp.register_message_handler(callback=self.cancel, commands=['Отмена'],
@@ -319,7 +378,7 @@ class TaskHandler:
         dp.register_message_handler(self.cancel, Text(equals='Отмена', ignore_case=True),
                                     state='*')
 
-        # Добавление задачи
+        # Добавление и обновление задачи
         dp.register_message_handler(callback=self.load_title,
                                     state=self.fsm_task.title)
         dp.register_message_handler(callback=self.load_description,
@@ -334,8 +393,13 @@ class TaskHandler:
                                     state=self.fsm_task.prepare_executor_id)
         dp.register_message_handler(callback=self.load_executor_id,
                                     state=self.fsm_task.executor_id)
-        dp.register_message_handler(callback=self.check_task,
-                                    state=self.fsm_task.check_task)
+        dp.register_message_handler(callback=self.check_add_task,
+                                    state=self.fsm_task.check_add_task)
+
+        dp.register_message_handler(callback=self.load_upd_uuid,
+                                    state=self.fsm_task.upd_uuid)
+        dp.register_message_handler(callback=self.check_upd_task,
+                                    state=self.fsm_task.check_upd_task)
         # Просмотр задачи
         dp.register_message_handler(callback=self.show_all_tasks, commands=['Показать_все_задачи'],
                                     state=None)
@@ -351,3 +415,5 @@ class TaskHandler:
         # Удаление задачи
         dp.register_message_handler(callback=self.delete_task,
                                     state=self.fsm_task.delete_task)
+
+

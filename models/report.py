@@ -6,15 +6,13 @@ from aiogram.types import Message, ReplyKeyboardRemove
 class Report:
     """Класс Отчета"""
 
-    def __init__(self, message: Message):
-        self.message = message
-
+    def __init__(self):
         self.uuid = ...  # type: int
         self.title = ...  # type: str
         self.title_related_task = ...  # type: str
         self.id_related_task = ...  # type: int
         self.description = ...  # type: str
-        self.author = "".join(['@', str(self.message.from_user.username)])
+        self.author = ...  # type: str
         self.date = str(datetime.now().date())
         self.time = self.get_time()
 
@@ -41,15 +39,18 @@ class Report:
     async def set_uuid(self, uuid: int):
         self.uuid = uuid
 
-    async def print_info(self):
+    async def set_author(self, message):
+        self.author = "".join(['@', str(message.from_user.username)])
+
+    async def print_info(self, message: Message):
         """Вывод данных об отчете в сообщении"""
-        await self.message.reply(f"Название отчета: {self.title}\n"
-                                 f"Отчет по задаче: {self.title_related_task}\n"
-                                 f"id связанной задачи: {self.id_related_task}\n"
-                                 f"Содержание: \n{self.description}\n\n"
-                                 f"Автор: {self.author}\n"
-                                 f"Дата составления отчета: {self.date}\n"
-                                 f"Время составления отчета: {self.time}\n", reply_markup=ReplyKeyboardRemove())
+        await message.reply(f"Название отчета: {self.title}\n"
+                            f"Отчет по задаче: {self.title_related_task}\n"
+                            f"id связанной задачи: {self.id_related_task}\n"
+                            f"Содержание: \n{self.description}\n\n"
+                            f"Автор: {self.author}\n"
+                            f"Дата составления отчета: {self.date}\n"
+                            f"Время составления отчета: {self.time}\n", reply_markup=ReplyKeyboardRemove())
 
     def get_time(self):
         time = datetime.now().time()
