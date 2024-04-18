@@ -4,7 +4,7 @@ from aiogram.dispatcher import Dispatcher
 from aiogram.utils import executor
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from db.base_db import BaseDb
-from db.db_settings import DB_NAME, DB_TASKS_COMMANDS, DB_REPORTS_COMMANDS
+from db.db_settings import DB_TASKS_COMMANDS, DB_REPORTS_COMMANDS
 from general.general_handler import GeneralHandler
 from general.unknown_handler import UnknownHandler
 from reports.handlers.report_handler import ReportHandler
@@ -16,7 +16,7 @@ class TelegramBot:
     bot = Bot(token=os.getenv('TOKEN'))
     storage = MemoryStorage()
     dp = Dispatcher(bot=bot, storage=storage)
-    db = BaseDb(db_name=DB_NAME)
+    db = BaseDb()
 
     async def on_startup(self, _):
         await self.db.create_table(command=DB_TASKS_COMMANDS.get('create_task_table'))
@@ -25,8 +25,8 @@ class TelegramBot:
 
     def run(self):
         general_handler = GeneralHandler(bot=self.bot)
-        task_handler = TaskHandler(bot=self.bot, db_name=DB_NAME)
-        report_handler = ReportHandler(bot=self.bot, db_name=DB_NAME)
+        task_handler = TaskHandler(bot=self.bot)
+        report_handler = ReportHandler(bot=self.bot)
         unknown_handler = UnknownHandler(bot=self.bot)
 
         general_handler.registration(dp=self.dp)
@@ -38,5 +38,6 @@ class TelegramBot:
 
 
 if __name__ == '__main__':
+
     telegram_bot = TelegramBot()
     telegram_bot.run()

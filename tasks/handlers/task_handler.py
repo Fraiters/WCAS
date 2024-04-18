@@ -35,11 +35,11 @@ class FsmTask(StatesGroup):
 class TaskHandler:
     """ Класс хендлеров для задач """
 
-    def __init__(self, bot: Bot, db_name: str):
+    def __init__(self, bot: Bot):
         self.bot = bot
         self.task_kb = TaskKb()
         self.fsm_task = FsmTask()
-        self.task_db = TaskBaseDb(db_name=db_name)
+        self.task_db = TaskBaseDb()
         self.task = ...  # type: Task
 
     # Уровень клавиатуры 1

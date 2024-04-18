@@ -31,12 +31,12 @@ class FsmReport(StatesGroup):
 class ReportHandler:
     """ Класс хендлеров для отчетов """
 
-    def __init__(self, bot: Bot, db_name: str):
+    def __init__(self, bot: Bot):
         self.bot = bot
         self.report_kb = ReportKb()
         self.fsm_report = FsmReport()
-        self.task_db = TaskBaseDb(db_name=db_name)
-        self.report_db = ReportBaseDb(db_name=db_name)
+        self.task_db = TaskBaseDb()
+        self.report_db = ReportBaseDb()
         self.report = ...  # type: Report
 
     # Уровень клавиатуры 1
@@ -180,7 +180,7 @@ class ReportHandler:
         reports = []  # type: List[Report]
 
         if db_reports == []:
-            await message.reply(f'Отчеты с id исполнителя = {user_id} не найдены'
+            await message.reply(f'Отчеты с id исполнителя = {user_id} не найдены\n'
                                 'Повторите попытку', reply_markup=ReplyKeyboardRemove())
         else:
             for uuid, title, title_related_task, id_related_task, description, author, date, time in db_reports:
