@@ -12,14 +12,15 @@ class ReportBaseDb(BaseDb):
         self.cursor.execute(command, tuple(data.values()))
         self.connection.commit()
 
-    async def select_uuid_by_title(self, title: str) -> int:
+    async def select_uuid_by_title(self, title: str) -> Union[int, None]:
         """ Выбор uuid по названию отчета"""
         command = DB_REPORTS_COMMANDS.get("select_uuid_by_title")
         result = await self.select_one_by(command=command, data=title)  # type: Union[Tuple, None]
 
         if result is None:
-            msg = "uuid по данному title не существует"
-            raise Exception(msg)
+            return None
+            # msg = "uuid по данному title не существует"
+            # raise Exception(msg)
 
         return result[0]
 

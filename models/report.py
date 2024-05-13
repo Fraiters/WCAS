@@ -48,7 +48,7 @@ class Report:
                             f"Отчет по задаче: {self.title_related_task}\n"
                             f"id связанной задачи: {self.id_related_task}\n"
                             f"Содержание: \n{self.description}\n\n"
-                            f"Автор: {self.author}\n"
+                            f"Автор: @{self.author}\n"
                             f"Дата составления отчета: {self.date}\n"
                             f"Время составления отчета: {self.time}\n", reply_markup=ReplyKeyboardRemove())
 

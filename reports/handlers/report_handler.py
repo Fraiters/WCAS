@@ -54,7 +54,6 @@ class ReportHandler:
     # Добавить отчет:
     async def add_report(self, message: Message):
         """ Хендлер для команды 'Добавить отчет' (Вход в машину состояний) """
-
         await self.fsm_report.title.set()
         await message.reply("Введите название отчета", reply_markup=ReplyKeyboardRemove())
 
@@ -170,12 +169,12 @@ class ReportHandler:
         """ Хендлер для ввода user_id для команды 'Показать отчет по id исполнителя' """
 
         await self.fsm_report.show_by_user_id.set()
-        await self.bot.send_message(message.from_user.id, "Введите id исполнителя (через @)",
+        await self.bot.send_message(message.from_user.id, "Введите id исполнителя (без знака @)",
                                     reply_markup=ReplyKeyboardRemove())
 
     async def show_report_by_user_id(self, message: Message, state: FSMContext):
         """ Хендлер для команды 'Показать отчет по id исполнителя' """
-        user_id = message.text
+        user_id = message.text.lower()
         db_reports = await self.report_db.select_report_by_user_id(user_id=user_id)
         reports = []  # type: List[Report]
 
@@ -202,7 +201,7 @@ class ReportHandler:
                                      f"Отчет по задаче: {report.title_related_task}\n"
                                      f"id связанной задачи: {report.id_related_task}\n"
                                      f"Содержание: \n{report.description}\n\n"
-                                     f"Автор: {report.author}\n"
+                                     f"Автор: @{report.author}\n"
                                      f"Дата составления отчета: {report.date}\n"
                                      f"Время составления отчета: {report.time}\n", reply_markup=ReplyKeyboardRemove())
 
@@ -241,7 +240,7 @@ class ReportHandler:
                                      f"Отчет по задаче: {report.title_related_task}\n"
                                      f"id связанной задачи: {report.id_related_task}\n"
                                      f"Содержание: \n{report.description}\n\n"
-                                     f"Автор: {report.author}\n"
+                                     f"Автор: @{report.author}\n"
                                      f"Дата составления отчета: {report.date}\n"
                                      f"Время составления отчета: {report.time}\n", reply_markup=ReplyKeyboardRemove())
 
@@ -254,9 +253,17 @@ class ReportHandler:
 
     async def load_title(self, message: Message, state: FSMContext):
         """ Загрузка заголовка отчета """
+        self.report = Report()
         async with state.proxy() as data:
             data['title'] = message.text
-            # TO DO: добавить отловку исключения на создание не уникального title
+            # Исключение на создание отчета с не уникальным title
+            report_id = await self.report_db.select_uuid_by_title(title=data['title'])
+            if report_id is not None:
+                await message.reply(f'Отчет с таким названием уже существует \n'
+                                    'Повторите попытку')
+                await self.fsm_report.title.set()
+                await message.reply("Введите название отчета", reply_markup=ReplyKeyboardRemove())
+                return
         await self.fsm_report.id_related_task.set()
         await message.reply("Введите id связанной задачи", reply_markup=ReplyKeyboardRemove())
 
@@ -267,12 +274,14 @@ class ReportHandler:
                 data['id_related_task'] = int(message.text)
                 # Добавление названия связанной задачи с помощью поиска по id
                 title_related_task = await self.task_db.select_title_by_uuid(uuid=data['id_related_task'])
+
                 if title_related_task is None:
                     await message.reply(f'Задачи с id = {data["id_related_task"]} не существует\n'
                                         'Повторите попытку')
-                data['title_related_task'] = title_related_task[0]
-            await self.fsm_report.description.set()
-            await message.reply('Введите содержание отчета', reply_markup=ReplyKeyboardRemove())
+                else:
+                    data['title_related_task'] = title_related_task[0]
+                    await self.fsm_report.description.set()
+                    await message.reply('Введите содержание отчета', reply_markup=ReplyKeyboardRemove())
         except ValueError:
             await message.reply('Неверный формат записи id\n'
                                 'Повторите попытку')
@@ -296,8 +305,8 @@ class ReportHandler:
     async def check_add_report(self, message: Message, state: FSMContext):
         """ Проверка отчета """
         if message.text == REPORT_BUTTONS.get("check_report")[1]:
-            await self.fsm_report.id_related_task.set()
-            await self.bot.send_message(message.from_user.id, "Введите id связанной задачи",
+            await self.fsm_report.title.set()
+            await self.bot.send_message(message.from_user.id, "Введите заголовок отчета:",
                                         reply_markup=ReplyKeyboardRemove())
         elif message.text == REPORT_BUTTONS.get("check_report")[0]:
             db_data = self.report.to_dict()

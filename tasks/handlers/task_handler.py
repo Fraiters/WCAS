@@ -173,12 +173,12 @@ class TaskHandler:
         """Хендлер для ввода executor_id для команды 'Показать задачи по id исполнителя' """
 
         await self.fsm_task.show_by_executor_id.set()
-        await self.bot.send_message(message.from_user.id, "Введите id исполнителя (через @)",
+        await self.bot.send_message(message.from_user.id, "Введите id исполнителя (без знака @)",
                                     reply_markup=ReplyKeyboardRemove())
 
     async def show_task_by_executor_id(self, message: Message, state: FSMContext):
         """ Хендлер для команды 'Показать задачу по id исполнителя' """
-        executor_id = message.text
+        executor_id = message.text.lower()
         db_tasks = await self.task_db.select_task_by_executor_id(executor_id=executor_id)
         tasks = []  # type: List[Task]
 
@@ -208,7 +208,7 @@ class TaskHandler:
                                      f"Приоритет: {task.priority}\n"
                                      f"Срок выполнения: {task.deadline}\n"
                                      f"Тип исполнителя: {task.executor_type}\n"
-                                     f"Исполнитель: {task.executor_id}\n", reply_markup=ReplyKeyboardRemove())
+                                     f"Исполнитель: @{task.executor_id}\n", reply_markup=ReplyKeyboardRemove())
 
             kb = self.task_kb.add(GENERAL_BUTTONS)
             await self.bot.send_message(message.from_user.id, 'Главное меню', reply_markup=kb)
@@ -248,7 +248,7 @@ class TaskHandler:
                                      f"Приоритет: {task.priority}\n"
                                      f"Срок выполнения: {task.deadline}\n"
                                      f"Тип исполнителя: {task.executor_type}\n"
-                                     f"Исполнитель: {task.executor_id}\n", reply_markup=ReplyKeyboardRemove())
+                                     f"Исполнитель: @{task.executor_id}\n", reply_markup=ReplyKeyboardRemove())
 
                 kb = self.task_kb.add(GENERAL_BUTTONS)
                 await self.bot.send_message(message.from_user.id, 'Главное меню', reply_markup=kb)
@@ -261,7 +261,14 @@ class TaskHandler:
         """ Загрузка заголовка задачи """
         async with state.proxy() as data:
             data['title'] = message.text
-            # TO DO: добавить отловку исключения на создание не уникального title
+            # Исключение на создание задачи с не уникальным title
+            task_id = await self.task_db.select_uuid_by_title(title=data['title'])
+            if task_id is not None:
+                await message.reply(f'Задача с таким названием уже существует \n'
+                                    'Повторите попытку')
+                await self.fsm_task.title.set()
+                await message.reply("Введите название задачи", reply_markup=ReplyKeyboardRemove())
+                return
         await self.fsm_task.description.set()
         await message.reply('Введите описание задачи', reply_markup=ReplyKeyboardRemove())
 
@@ -319,13 +326,13 @@ class TaskHandler:
 
         elif message.text == TASK_BUTTONS.get("prepare_executor_id")[0]:
             await self.fsm_task.executor_id.set()
-            await message.reply('Введите id исполнителя задачи через @', reply_markup=ReplyKeyboardRemove())
+            await message.reply('Введите id исполнителя задачи (без знака @)', reply_markup=ReplyKeyboardRemove())
 
     async def load_executor_id(self, message: Message, state: FSMContext):
         """ Загрузка id исполнителя """
 
         async with state.proxy() as data:
-            data['executor_id'] = message.text
+            data['executor_id'] = message.text.lower()
             data['status'] = TASK_STATUS[1]
             self.task.from_dict(data=data)
             await self.task.print_info(message=message)
