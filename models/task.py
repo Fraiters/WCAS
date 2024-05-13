@@ -58,7 +58,7 @@ class Task:
                             f"Приоритет: {self.priority}\n"
                             f"Срок выполнения: {self.deadline}\n"
                             f"Тип исполнителя: {self.executor_type}\n"
-                            f"Исполнитель: {self.executor_id}\n")
+                            f"Исполнитель: @{self.executor_id}\n")
 
 
 # Статус задачи

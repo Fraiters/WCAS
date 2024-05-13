@@ -1,4 +1,16 @@
-DB_NAME = "wcas.db"
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Настройки для подключения к БД
+DB_SETTINGS: dict[str, str] = {
+    "database": os.getenv('DATABASE'),
+    "user": os.getenv('USER'),
+    "password": os.getenv('PASSWORD'),
+    "host": os.getenv('HOST'),
+    "port": os.getenv('PORT')
+}
 
 # Команды БД для задачи
 DB_TASKS_COMMANDS = {
