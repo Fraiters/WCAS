@@ -4,7 +4,7 @@ from db.base_db import BaseDb
 from db.db_settings import DB_TASKS_COMMANDS
 
 
-class TaskBaseDb(BaseDb):
+class TaskDb(BaseDb):
     """ Класс работы с таблицей 'tasks' """
 
     async def insert_record_task(self, data: Dict):

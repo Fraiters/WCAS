@@ -45,3 +45,12 @@ DB_REPORTS_COMMANDS = {
     "update_report": 'UPDATE reports SET title = %s, title_related_task = %s, id_related_task = %s, '
                      'description = %s, author = %s, date = %s, time = %s WHERE uuid = %s',
 }
+
+# Команды БД для пользователя
+DB_USERS_COMMANDS = {
+    "create_user_table": 'CREATE TABLE IF NOT EXISTS users(uuid SERIAL PRIMARY KEY, '
+                         'username TEXT UNIQUE, user_id TEXT UNIQUE)',
+    "insert_user": 'INSERT INTO  users (username, user_id) VALUES (%s, %s)',
+    "select_uuid_by_username": 'SELECT uuid FROM users WHERE username = %s',
+    "select_user_id_by_username": 'SELECT user_id FROM users WHERE username = %s',
+}
