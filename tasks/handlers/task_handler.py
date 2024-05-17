@@ -7,8 +7,10 @@ from aiogram.types import Message
 from aiogram.types import ReplyKeyboardRemove
 from settings import TASK_BUTTONS, GENERAL_BUTTONS
 from models.task import Task, TASK_STATUS
-from tasks.db.task_db import TaskBaseDb
+from tasks.db.task_db import TaskDb
 from tasks.keyboards.task_kb import TaskKb
+from user.user_db import UserDb
+from user.user_settings import EXECUTORS
 from utils.utils import is_datetime
 
 
@@ -31,6 +33,9 @@ class FsmTask(StatesGroup):
 
     delete_task = State()
 
+    assign_task = State()
+    assign_executor_id = State()
+
 
 class TaskHandler:
     """ Класс хендлеров для задач """
@@ -39,7 +44,7 @@ class TaskHandler:
         self.bot = bot
         self.task_kb = TaskKb()
         self.fsm_task = FsmTask()
-        self.task_db = TaskBaseDb()
+        self.task_db = TaskDb()
         self.task = ...  # type: Task
 
     # Уровень клавиатуры 1
@@ -51,6 +56,8 @@ class TaskHandler:
                                                           'Чтобы посмотреть отчеты нажмите на "/Показать"\n\n'
                                                           'Чтобы обновить задачу нажмите на "/Редактировать_задачу"\n\n'
                                                           'Чтобы удалить задачу нажмите на "/Удалить_задачу"\n\n'
+                                                          'Чтобы назначить задачу на исполнителя нажмите на \n'
+                                                          '"/Назначить_задачу"\n\n'
                                                           'Для отмены введите команду "/Отмена"', reply_markup=kb)
 
     # Уровень клавиатуры 2
@@ -83,6 +90,14 @@ class TaskHandler:
         """ Хендлер для ввода id для удаления задачи """
         await self.fsm_task.delete_task.set()
         await message.reply("Введите id задачи, которую хотели бы удалить", reply_markup=ReplyKeyboardRemove())
+
+    # Уровень клавиатуры 2
+    # Назначить задачу:
+    async def input_assign_task(self, message: Message):
+        """ Хендлер для ввода id для назначения задачи """
+        await self.fsm_task.assign_task.set()
+        await message.reply("Введите id задачи, которую хотели бы назначить на исполнителя",
+                            reply_markup=ReplyKeyboardRemove())
 
     async def cancel(self, message: Message, state: FSMContext):
         """ Выход из машины состояний """
@@ -149,6 +164,70 @@ class TaskHandler:
         except ValueError:
             await message.reply('Неверный формат записи id\n'
                                 'Повторите попытку')
+
+    async def assign_task(self, message: Message):
+        """ Хендлер для команды 'Назначить задачу' """
+        try:
+            uuid = int(message.text)
+            db_task = await self.task_db.select_task_by_uuid(uuid=uuid)
+            if db_task is None:
+                await message.reply(f'Задачи с id = {uuid} не существует\n'
+                                    'Повторите попытку')
+            else:
+                self.task = Task()
+                self.task.from_tuple(data=db_task)
+
+                # Проверка статуса задачи
+                if self.task.status == TASK_STATUS[2]:
+                    await message.reply(f'Задача с id = {uuid} уже выполнена\n'
+                                        'Повторите попытку')
+                    await self.fsm_task.assign_task.set()
+
+                elif self.task.status == TASK_STATUS[1]:
+                    kb = self.task_kb.add([TASK_BUTTONS.get("task")[5]])
+                    await self.fsm_task.assign_executor_id.set()
+
+                    await message.reply(f'Задача с id = {uuid} уже выполняется и назначена на исполнителя.\n'
+                                        'Если вы желаете переназначить исполнителя, то введите его id (без знака @)\n'
+                                        'Если хотите выйти из меню назначения, то введите команду /Отмена',
+                                        reply_markup=kb)
+
+                elif self.task.status == TASK_STATUS[0]:
+
+                    await self.fsm_task.assign_executor_id.set()
+                    await self.bot.send_message(message.from_user.id, "Введите id исполнителя (без знака @)",
+                                                reply_markup=ReplyKeyboardRemove())
+
+        except ValueError:
+            await message.reply('Неверный формат записи id\n'
+                                'Повторите попытку')
+
+    async def assign_executor_id(self, message: Message, state: FSMContext):
+        """Хендлер для назначения executor_id на задачу """
+        executor_id = message.text
+
+        if executor_id not in EXECUTORS:
+            await message.reply(f'Исполнителя с id = {executor_id} не существует\n'
+                                'Повторите попытку')
+            await self.fsm_task.assign_executor_id.set()
+        else:
+            self.task.executor_id = executor_id
+            self.task.status = TASK_STATUS[1]
+            db_data = self.task.to_dict()
+            uuid = self.task.uuid
+
+            await self.task_db.update_task(data=db_data, uuid=uuid)
+
+            await state.finish()
+            await message.reply(f'Исполнителя @{executor_id} назначили на задачу с id = {self.task.uuid}\n')
+            user_db = UserDb()
+            user_id = await user_db.select_user_id_by_username(username=executor_id)
+            await self.bot.send_message(user_id,
+                                        f"Вас назначили на задачу {self.task.title} с id = {self.task.uuid}",
+                                        reply_markup=ReplyKeyboardRemove())
+
+            kb = self.task_kb.add(GENERAL_BUTTONS)
+            await self.bot.send_message(message.from_user.id, 'Главное меню', reply_markup=kb)
 
     async def show_all_tasks(self, message: Message):
         """ Хендлер для команды 'Показать все задачи' """
@@ -226,19 +305,11 @@ class TaskHandler:
             uuid = int(message.text)
             db_task = await self.task_db.select_task_by_uuid(uuid=uuid)
             if db_task is None:
-                await message.reply(f'Отчета с id = {uuid} не существует\n'
+                await message.reply(f'Задачи с id = {uuid} не существует\n'
                                     'Повторите попытку')
             else:
                 task = Task()
-                for uuid, title, description, status, priority, deadline, executor_type, executor_id in [db_task]:
-                    task.uuid = uuid
-                    task.title = title
-                    task.description = description
-                    task.status = status
-                    task.priority = priority
-                    task.deadline = deadline
-                    task.executor_type = executor_type
-                    task.executor_id = executor_id
+                task.from_tuple(data=db_task)
 
                 await state.finish()
                 await message.answer(f"id задачи: {task.uuid}\n"
@@ -380,6 +451,8 @@ class TaskHandler:
                                     state=None)
         dp.register_message_handler(callback=self.input_delete_task, commands=['Удалить_задачу'],
                                     state=None)
+        dp.register_message_handler(callback=self.input_assign_task, commands=['Назначить_задачу'],
+                                    state=None)
         dp.register_message_handler(callback=self.cancel, commands=['Отмена'],
                                     state='*')
         dp.register_message_handler(self.cancel, Text(equals='Отмена', ignore_case=True),
@@ -423,4 +496,8 @@ class TaskHandler:
         dp.register_message_handler(callback=self.delete_task,
                                     state=self.fsm_task.delete_task)
 
-
+        # Назначение задачи
+        dp.register_message_handler(callback=self.assign_task,
+                                    state=self.fsm_task.assign_task)
+        dp.register_message_handler(callback=self.assign_executor_id,
+                                    state=self.fsm_task.assign_executor_id)

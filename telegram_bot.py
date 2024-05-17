@@ -4,7 +4,7 @@ from aiogram.dispatcher import Dispatcher
 from aiogram.utils import executor
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from db.base_db import BaseDb
-from db.db_settings import DB_TASKS_COMMANDS, DB_REPORTS_COMMANDS
+from db.db_settings import DB_TASKS_COMMANDS, DB_REPORTS_COMMANDS, DB_USERS_COMMANDS
 from general.general_handler import GeneralHandler
 from general.unknown_handler import UnknownHandler
 from reports.handlers.report_handler import ReportHandler
@@ -21,6 +21,7 @@ class TelegramBot:
     async def on_startup(self, _):
         await self.db.create_table(command=DB_TASKS_COMMANDS.get('create_task_table'))
         await self.db.create_table(command=DB_REPORTS_COMMANDS.get('create_report_table'))
+        await self.db.create_table(command=DB_USERS_COMMANDS.get('create_user_table'))
         await self.db.close_connection()
 
     def run(self):

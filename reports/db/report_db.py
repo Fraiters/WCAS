@@ -3,7 +3,7 @@ from db.base_db import BaseDb
 from db.db_settings import DB_REPORTS_COMMANDS
 
 
-class ReportBaseDb(BaseDb):
+class ReportDb(BaseDb):
     """Класс работы с таблицей 'reports' """
 
     async def insert_record_report(self, data: Dict):

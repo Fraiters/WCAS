@@ -8,8 +8,8 @@ from reports.keyboards.report_kb import ReportKb
 from aiogram.types import ReplyKeyboardRemove
 from settings import REPORT_BUTTONS, GENERAL_BUTTONS
 from models.report import Report
-from reports.db.report_db import ReportBaseDb
-from tasks.db.task_db import TaskBaseDb
+from reports.db.report_db import ReportDb
+from tasks.db.task_db import TaskDb
 
 
 class FsmReport(StatesGroup):
@@ -35,8 +35,8 @@ class ReportHandler:
         self.bot = bot
         self.report_kb = ReportKb()
         self.fsm_report = FsmReport()
-        self.task_db = TaskBaseDb()
-        self.report_db = ReportBaseDb()
+        self.task_db = TaskDb()
+        self.report_db = ReportDb()
         self.report = ...  # type: Report
 
     # Уровень клавиатуры 1

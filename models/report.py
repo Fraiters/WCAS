@@ -39,8 +39,8 @@ class Report:
     async def set_uuid(self, uuid: int):
         self.uuid = uuid
 
-    async def set_author(self, message):
-        self.author = "".join(['@', str(message.from_user.username)])
+    async def set_author(self, message: Message):
+        self.author = message.from_user.username.lower()
 
     async def print_info(self, message: Message):
         """Вывод данных об отчете в сообщении"""

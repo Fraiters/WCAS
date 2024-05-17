@@ -1,4 +1,4 @@
-from typing import Dict, Union
+from typing import Dict, Union, Tuple
 from aiogram.types import Message
 
 
@@ -29,6 +29,18 @@ class Task:
             self.executor_id = data.get("executor_id")
         else:
             self.executor_id = None
+
+    def from_tuple(self, data: Tuple):
+        """Перевод из кортежа в данные 'задачи' """
+        for uuid, title, description, status, priority, deadline, executor_type, executor_id in [data]:
+            self.uuid = uuid
+            self.title = title
+            self.description = description
+            self.status = status
+            self.priority = priority
+            self.deadline = deadline
+            self.executor_type = executor_type
+            self.executor_id = executor_id
 
     def to_dict(self):
         """Перевод из данных 'задачи' в словарь"""
