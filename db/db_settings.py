@@ -15,17 +15,19 @@ DB_SETTINGS: dict[str, str] = {
 # Команды БД для задачи
 DB_TASKS_COMMANDS = {
     "create_task_table": 'CREATE TABLE IF NOT EXISTS tasks(uuid SERIAL PRIMARY KEY, title TEXT UNIQUE, '
-                         'description TEXT, status TEXT, priority TEXT, deadline TEXT, executor_type TEXT, '
-                         'executor_id TEXT)',
-    "insert_task": 'INSERT INTO  tasks (title, description, status, priority, deadline, executor_type, executor_id) '
-                   'VALUES (%s, %s, %s, %s, %s, %s, %s)',
+                         'description TEXT, status TEXT, complexity TEXT, deadline TEXT, closing_date TEXT, '
+                         'previous_task TEXT, next_task TEXT, executor_type TEXT, executor_id TEXT)',
+    "insert_task": 'INSERT INTO  tasks (title, description, status, complexity, deadline, closing_date, previous_task, '
+                   'next_task, executor_type, executor_id) '
+                   'VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)',
     "select_uuid_by_title": 'SELECT uuid FROM tasks WHERE title = %s',
     "select_title_by_uuid": 'SELECT title FROM tasks WHERE uuid = %s',
     "select_all_tasks": 'SELECT uuid, title FROM tasks',
     "select_task_by_executor_id": 'SELECT * FROM tasks WHERE executor_id = %s',
     "select_task_by_uuid": 'SELECT * FROM tasks WHERE uuid = %s',
     "delete_task": 'DELETE FROM tasks WHERE uuid = %s',
-    "update_task": 'UPDATE tasks SET title = %s, description = %s, status = %s, priority = %s, deadline = %s, '
+    "update_task": 'UPDATE tasks SET title = %s, description = %s, status = %s, complexity = %s, deadline = %s, '
+                   'closing_date = %s, previous_task = %s, next_task = %s, '
                    'executor_type = %s, executor_id = %s WHERE uuid = %s',
 }
 
