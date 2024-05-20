@@ -70,7 +70,7 @@ class Task:
         self.uuid = uuid
 
     async def set_closing_date(self):
-        self.closing_date = get_current_date()
+        self.closing_date = str(get_current_date())
 
     async def print_info(self, message: Message):
         """Вывод всех данных о задачи в сообщении"""
