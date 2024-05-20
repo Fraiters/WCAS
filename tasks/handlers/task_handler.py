@@ -5,6 +5,9 @@ from aiogram.dispatcher.filters import Text
 from aiogram.dispatcher.filters.state import StatesGroup, State
 from aiogram.types import Message
 from aiogram.types import ReplyKeyboardRemove
+
+from performance_indicator.general_performance_indicator import GeneralPerformanceIndicator
+from performance_indicator.performance_indicator import PerformanceIndicator
 from settings import TASK_BUTTONS, GENERAL_BUTTONS
 from models.task import Task, TASK_STATUS
 from tasks.db.task_db import TaskDb
@@ -177,6 +180,15 @@ class TaskHandler:
                                         reply_markup=ReplyKeyboardRemove())
 
             await state.finish()
+
+            # Оповещение пользователя о его назначении на задачу
+            if self.task.executor_id != "Не назначен":
+                user_db = UserDb()
+                user_id = await user_db.select_user_id_by_username(username=self.task.executor_id)
+                await self.bot.send_message(user_id,
+                                            f"Вас назначили на задачу {self.task.title} с id = {self.task.uuid}",
+                                            reply_markup=ReplyKeyboardRemove())
+
             kb = self.task_kb.add(GENERAL_BUTTONS)
             await self.bot.send_message(message.from_user.id, 'Главное меню', reply_markup=kb)
         else:
@@ -222,7 +234,7 @@ class TaskHandler:
                     await self.fsm_task.assign_task.set()
 
                 elif self.task.status == TASK_STATUS[1]:
-                    kb = self.task_kb.add([TASK_BUTTONS.get("task")[5]])
+                    kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
                     await self.fsm_task.assign_executor_id.set()
 
                     await message.reply(f'Задача с id = {uuid} уже выполняется и назначена на исполнителя.\n'
@@ -258,6 +270,7 @@ class TaskHandler:
 
             await state.finish()
             await message.reply(f'Исполнителя @{executor_id} назначили на задачу с id = {self.task.uuid}\n')
+            # Оповещение пользователя о его назначении на задачу
             user_db = UserDb()
             user_id = await user_db.select_user_id_by_username(username=executor_id)
             await self.bot.send_message(user_id,
@@ -578,6 +591,14 @@ class TaskHandler:
         """ Загрузка id исполнителя """
 
         async with state.proxy() as data:
+            executor_id = message.text.lower()
+
+            if executor_id not in EXECUTORS:
+                await message.reply(f'Исполнителя с id = {executor_id} не существует\n'
+                                    'Повторите попытку')
+                await self.fsm_task.executor_id.set()
+                return
+
             data['executor_id'] = message.text.lower()
             data['status'] = TASK_STATUS[1]
             self.task.from_dict(data=data)
@@ -606,7 +627,6 @@ class TaskHandler:
 
             # Обновление данных у предыдущей связанной задачи
             if self.task.previous_task != "Нет":
-                print(1)
                 db_previous_task = await self.task_db.select_task_by_uuid(uuid=int(self.task.previous_task))
                 if db_previous_task is not None:
                     old_task = Task()
@@ -628,6 +648,15 @@ class TaskHandler:
                                                               f"id задачи: {self.task.uuid}",
                                         reply_markup=ReplyKeyboardRemove())
             await state.finish()
+
+            # Оповещение пользователя о его назначении на задачу
+            if self.task.executor_id != "Не назначен":
+                user_db = UserDb()
+                user_id = await user_db.select_user_id_by_username(username=self.task.executor_id)
+                await self.bot.send_message(user_id,
+                                            f"Вас назначили на задачу {self.task.title} с id = {self.task.uuid}",
+                                            reply_markup=ReplyKeyboardRemove())
+
             kb = self.task_kb.add(GENERAL_BUTTONS)
             await self.bot.send_message(message.from_user.id, 'Главное меню', reply_markup=kb)
         else:
@@ -659,6 +688,26 @@ class TaskHandler:
                     await message.reply(f'Задача с id = {uuid} уже закрыта\n'
                                         'Повторите попытку', reply_markup=ReplyKeyboardRemove())
                 else:
+                    # обновление данных задачи
+                    task.status = TASK_STATUS[2]
+                    await task.set_closing_date()
+                    db_data = task.to_dict()
+                    await self.task_db.update_task(data=db_data, uuid=uuid)
+
+                    # обновление данных рейтинга
+                    performance_indicator = PerformanceIndicator()
+                    current_performance_indicator = await performance_indicator.calculate_performance_indicator(
+                        deadline=task.deadline,
+                        closing_date=task.closing_date,
+                        complexity=task.complexity)
+
+                    general_performance_indicator = await GeneralPerformanceIndicator. \
+                        calculate_general_performance_indicator(
+                            current_performance_indicator=current_performance_indicator)
+
+                    print(general_performance_indicator)
+
+                    # обновление данных задачи
                     task.status = TASK_STATUS[2]
                     await task.set_closing_date()
                     db_data = task.to_dict()
