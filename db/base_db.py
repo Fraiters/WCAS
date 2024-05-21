@@ -66,10 +66,9 @@ class BaseDb:
         except psycopg2.Error as error:
             print("Ошибка при работе с БД", error)
 
-    async def update_record(self, command: str, data: Dict, uuid: int):
+    async def update_record(self, command: str, data: Dict):
         """ Изменение записи в таблице """
         try:
-            data["uuid"] = uuid
             self.cursor.execute(command, tuple(data.values()))
             self.connection.commit()
 

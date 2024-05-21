@@ -89,7 +89,7 @@ class ReportHandler:
         kb = self.report_kb.add(GENERAL_BUTTONS)
         await self.bot.send_message(message.from_user.id, 'Главное меню', reply_markup=kb)
 
-    async def load_upd_uuid(self, message: Message):
+    async def load_upd_uuid(self, message: Message, state: FSMContext):
         """ Загрузка id отчета, который необходимо изменить """
         try:
             uuid = int(message.text)
@@ -98,6 +98,9 @@ class ReportHandler:
                 await message.reply(f'Отчета с id = {uuid} не существует\n'
                                     'Повторите попытку')
             else:
+                async with state.proxy() as data:
+                    data['uuid'] = uuid
+
                 await self.report.set_uuid(uuid=uuid)
                 await self.fsm_report.title.set()
                 await message.reply("Введите заголовок отчета", reply_markup=ReplyKeyboardRemove())
@@ -115,7 +118,7 @@ class ReportHandler:
         elif message.text == REPORT_BUTTONS.get("check_report")[0]:
             db_data = self.report.to_dict()
             uuid = self.report.uuid
-            await self.report_db.update_report(data=db_data, uuid=uuid)
+            await self.report_db.update_report_by_uuid(data=db_data, uuid=uuid)
             await self.bot.send_message(message.from_user.id, "Отчет изменен и сохранен\n"
                                                               f"id отчета: {self.report.uuid}",
                                         reply_markup=ReplyKeyboardRemove())

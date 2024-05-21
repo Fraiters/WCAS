@@ -3,7 +3,7 @@ from aiogram.types import Message
 from settings import GENERAL_BUTTONS
 from general.general_keyboard import GeneralKb
 from user.user import User
-from user.user_db import UserDb
+from user.db.user_db import UserDb
 
 
 class GeneralHandler:
