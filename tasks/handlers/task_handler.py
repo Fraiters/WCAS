@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Tuple, Union
 from aiogram import Bot, Dispatcher
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text
@@ -6,13 +6,15 @@ from aiogram.dispatcher.filters.state import StatesGroup, State
 from aiogram.types import Message
 from aiogram.types import ReplyKeyboardRemove
 
+from executor_rating.db.executor_rating_db import ExecutorRatingDb
+from executor_rating.executor_rating import ExecutorRating
 from performance_indicator.general_performance_indicator import GeneralPerformanceIndicator
 from performance_indicator.performance_indicator import PerformanceIndicator
 from settings import TASK_BUTTONS, GENERAL_BUTTONS
 from models.task import Task, TASK_STATUS
 from tasks.db.task_db import TaskDb
 from tasks.keyboards.task_kb import TaskKb
-from user.user_db import UserDb
+from user.db.user_db import UserDb
 from user.user_settings import EXECUTORS
 from utils.utils import is_datetime
 
@@ -154,7 +156,7 @@ class TaskHandler:
             db_data = self.task.to_dict()
             uuid = self.task.uuid
 
-            await self.task_db.update_task(data=db_data, uuid=uuid)
+            await self.task_db.update_task_by_uuid(data=db_data, uuid=uuid)
 
             # Обновление данных у предыдущей связанной задачи
             if self.task.previous_task != "Нет":
@@ -164,7 +166,7 @@ class TaskHandler:
                     old_task.from_tuple(data=db_previous_task)
                     old_task.next_task = self.task.uuid
                     db_old_task = old_task.to_dict()
-                    await self.task_db.update_task(data=db_old_task, uuid=old_task.uuid)
+                    await self.task_db.update_task_by_uuid(data=db_old_task, uuid=old_task.uuid)
             # Обновление данных у следующей связанной задачи
             if self.task.next_task != "Нет":
                 db_next_task = await self.task_db.select_task_by_uuid(uuid=int(self.task.next_task))
@@ -173,7 +175,7 @@ class TaskHandler:
                     old_task.from_tuple(data=db_next_task)
                     old_task.previous_task = self.task.uuid
                     db_old_task = old_task.to_dict()
-                    await self.task_db.update_task(data=db_old_task, uuid=old_task.uuid)
+                    await self.task_db.update_task_by_uuid(data=db_old_task, uuid=old_task.uuid)
 
             await self.bot.send_message(message.from_user.id, "Задача изменена и сохранена\n"
                                                               f"id задачи: {self.task.uuid}",
@@ -266,7 +268,7 @@ class TaskHandler:
             db_data = self.task.to_dict()
             uuid = self.task.uuid
 
-            await self.task_db.update_task(data=db_data, uuid=uuid)
+            await self.task_db.update_task_by_uuid(data=db_data, uuid=uuid)
 
             await state.finish()
             await message.reply(f'Исполнителя @{executor_id} назначили на задачу с id = {self.task.uuid}\n')
@@ -285,7 +287,6 @@ class TaskHandler:
         db_tasks = await self.task_db.select_all_tasks()  # type: List[Tuple]
 
         tasks = []  # type: List[Task]
-
         for uuid, title in db_tasks:
             task = Task()
             task.uuid = uuid
@@ -633,7 +634,7 @@ class TaskHandler:
                     old_task.from_tuple(data=db_previous_task)
                     old_task.next_task = self.task.uuid
                     db_old_task = old_task.to_dict()
-                    await self.task_db.update_task(data=db_old_task, uuid=old_task.uuid)
+                    await self.task_db.update_task_by_uuid(data=db_old_task, uuid=old_task.uuid)
             # Обновление данных у следующей связанной задачи
             if self.task.next_task != "Нет":
                 db_next_task = await self.task_db.select_task_by_uuid(uuid=int(self.task.next_task))
@@ -642,7 +643,7 @@ class TaskHandler:
                     old_task.from_tuple(data=db_next_task)
                     old_task.previous_task = self.task.uuid
                     db_old_task = old_task.to_dict()
-                    await self.task_db.update_task(data=db_old_task, uuid=old_task.uuid)
+                    await self.task_db.update_task_by_uuid(data=db_old_task, uuid=old_task.uuid)
 
             await self.bot.send_message(message.from_user.id, "Задача создана и сохранена\n"
                                                               f"id задачи: {self.task.uuid}",
@@ -692,7 +693,7 @@ class TaskHandler:
                     task.status = TASK_STATUS[2]
                     await task.set_closing_date()
                     db_data = task.to_dict()
-                    await self.task_db.update_task(data=db_data, uuid=uuid)
+                    await self.task_db.update_task_by_uuid(data=db_data, uuid=uuid)
 
                     # обновление данных рейтинга
                     performance_indicator = PerformanceIndicator()
@@ -701,19 +702,31 @@ class TaskHandler:
                         closing_date=task.closing_date,
                         complexity=task.complexity)
 
+                    executor_rating_db = ExecutorRatingDb()
+
+                    db_executor_rating = await executor_rating_db.select_performance_indicator_by_executor_id(
+                        executor_id=task.executor_id)  # type: Union[Tuple, None]
+
                     general_performance_indicator = await GeneralPerformanceIndicator. \
                         calculate_general_performance_indicator(
+                            db_executor_rating=db_executor_rating,
                             current_performance_indicator=current_performance_indicator)
 
-                    print(general_performance_indicator)
+                    executor_rating = ExecutorRating(current_executor_id=task.executor_id,
+                                                     new_performance_indicator=general_performance_indicator)
 
-                    # обновление данных задачи
-                    task.status = TASK_STATUS[2]
-                    await task.set_closing_date()
-                    db_data = task.to_dict()
-                    await self.task_db.update_task(data=db_data, uuid=uuid)
+                    if db_executor_rating is None:
+                        db_data_executor_rating = executor_rating.to_dict_for_insert()
+                        await executor_rating_db.insert_record_executor(data=db_data_executor_rating)
+                    else:
+                        db_data_executor_rating = executor_rating.to_dict_for_update()
+                        await executor_rating_db.update_performance_indicator_executor(
+                            data=db_data_executor_rating)
 
-                    await self.bot.send_message(message.from_user.id, f"Задача id = {uuid} успешно закрыта",
+                    # data_rating = await executor_rating_db.select_all_executors()
+                    # print(data_rating)
+
+                    await self.bot.send_message(message.from_user.id, f"Задача с id = {uuid} успешно закрыта",
                                                 reply_markup=ReplyKeyboardRemove())
                     await state.finish()
 

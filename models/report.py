@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Union
 from datetime import datetime
 from aiogram.types import Message, ReplyKeyboardRemove
 
@@ -7,7 +7,7 @@ class Report:
     """Класс Отчета"""
 
     def __init__(self):
-        self.uuid = ...  # type: int
+        self.uuid = None  # type: Union[int, None]
         self.title = ...  # type: str
         self.title_related_task = ...  # type: str
         self.id_related_task = ...  # type: int
@@ -18,6 +18,7 @@ class Report:
 
     def from_dict(self, data: Dict):
         """Перевод из словаря в данные 'отчета' """
+        self.uuid = data.get("uuid")
         self.title = data.get("title")
         self.title_related_task = data.get("title_related_task")
         self.id_related_task = data.get("id_related_task")
