@@ -40,7 +40,7 @@ class BaseDb:
         except psycopg2.Error as error:
             print("Ошибка при работе с БД", error)
 
-    async def select_many_by(self, command: str, data: Union[str, int]) -> Union[List[Tuple], None]:
+    async def select_many_by(self, command: str, data: Union[str, int]) -> Union[List[Tuple]]:
         """ Выбор всех записей из таблицы БД по одному признаку """
         try:
             self.cursor.execute(command, (data,))

@@ -67,3 +67,15 @@ def text_table_layout(data: List[List[str]], columns: List[str]) -> str:
 
     text_table = "".join(text_table_list)
     return text_table
+
+
+def date_time_join(date: str, time: str) -> datetime:
+    """ Объединение двух строк даты и времени в формате "%d.%m.%Y %H:%M"
+
+    :return formatted_date_time: объект даты и времени в формате "%d.%m.%Y %H:%M"
+    """
+    date_time_str = " ".join([date, time])
+
+    date_time_object = datetime.strptime(date_time_str, "%d.%m.%Y %H:%M")
+
+    return date_time_object

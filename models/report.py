@@ -1,4 +1,4 @@
-from typing import Dict, Union
+from typing import Dict, Union, Tuple
 from datetime import datetime
 from aiogram.types import Message, ReplyKeyboardRemove
 
@@ -13,8 +13,20 @@ class Report:
         self.id_related_task = ...  # type: int
         self.description = ...  # type: str
         self.author = ...  # type: str
-        self.date = str(datetime.now().date())
+        self.date = str(datetime.now().date().strftime('%d.%m.%Y'))
         self.time = self.get_time()
+
+    def from_tuple(self, data: Tuple):
+        """Перевод из кортежа в данные 'задачи' """
+        for uuid, title, title_related_task, id_related_task, description, author, date, time in [data]:
+            self.uuid = uuid
+            self.title = title
+            self.title_related_task = title_related_task
+            self.id_related_task = id_related_task
+            self.description = description
+            self.author = author
+            self.date = date
+            self.time = time
 
     def from_dict(self, data: Dict):
         """Перевод из словаря в данные 'отчета' """

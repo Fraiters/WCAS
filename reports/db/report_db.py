@@ -47,6 +47,12 @@ class ReportDb(BaseDb):
         result = await self.select_one_by(command=command, data=uuid)
         return result
 
+    async def select_report_by_id_related_task(self, id_related_task: str) -> Union[List[Tuple]]:
+        """ Выбор отчета по id связанной с ним задаче """
+        command = DB_REPORTS_COMMANDS.get("select_report_by_id_related_task")
+        result = await self.select_many_by(command=command, data=id_related_task)
+        return result
+
     async def delete_report(self, uuid: int):
         """ Удаление отчета """
         command = DB_REPORTS_COMMANDS.get("delete_report")
