@@ -15,8 +15,8 @@ from models.task import Task, TASK_STATUS
 from tasks.db.task_db import TaskDb
 from tasks.keyboards.task_kb import TaskKb
 from user.db.user_db import UserDb
-from user.user_settings import EXECUTORS
-from utils.utils import is_datetime
+from user.user_settings import EXECUTORS, ANALYTICS, ADMINS
+from utils.utils import is_datetime, set_available_users
 
 
 class FsmTask(StatesGroup):
@@ -78,6 +78,17 @@ class TaskHandler:
     # Добавить задачу:
     async def add_task(self, message: Message):
         """ Хендлер для команды 'Добавить задачу' (Вход в машину состояний) """
+        # ограничение на использование хендлера (могут использовать аналитики и админы)
+        users = list(set(ANALYTICS + ADMINS))
+
+        available_users = list(map(int, await set_available_users(users=users)))  # type: List[int]
+
+        if message.from_user.id not in available_users:
+            kb = self.task_kb.add(GENERAL_BUTTONS)
+            await self.bot.send_message(message.from_user.id, f'Вы не имеете доступ к созданию задачи',
+                                        reply_markup=kb)
+            return
+
         self.task = Task()
         await self.fsm_task.title.set()
         await message.reply("Введите заголовок задачи", reply_markup=ReplyKeyboardRemove())
@@ -94,6 +105,17 @@ class TaskHandler:
     # Редактировать задачу:
     async def upd_task(self, message: Message):
         """ Хендлер для команды 'Редактировать задачу' (Вход в машину состояний) """
+        # ограничение на использование хендлера (могут использовать аналитики и админы)
+        users = list(set(ANALYTICS + ADMINS))
+
+        available_users = list(map(int, await set_available_users(users=users)))  # type: List[int]
+
+        if message.from_user.id not in available_users:
+            kb = self.task_kb.add(GENERAL_BUTTONS)
+            await self.bot.send_message(message.from_user.id, f'Вы не имеете доступ к обновлению задачи',
+                                        reply_markup=kb)
+            return
+
         self.task = Task()
         await self.fsm_task.upd_uuid.set()
         await message.reply("Введите id задачи, которую хотели бы изменить", reply_markup=ReplyKeyboardRemove())
@@ -102,6 +124,16 @@ class TaskHandler:
     # Удалить задачу:
     async def input_delete_task(self, message: Message):
         """ Хендлер для ввода id для удаления задачи """
+        # ограничение на использование хендлера (могут использовать аналитики и админы)
+        users = list(set(ANALYTICS + ADMINS))
+
+        available_users = list(map(int, await set_available_users(users=users)))  # type: List[int]
+
+        if message.from_user.id not in available_users:
+            kb = self.task_kb.add(GENERAL_BUTTONS)
+            await self.bot.send_message(message.from_user.id, f'Вы не имеете доступ к удалению задачи',
+                                        reply_markup=kb)
+            return
         await self.fsm_task.delete_task.set()
         await message.reply("Введите id задачи, которую хотели бы удалить", reply_markup=ReplyKeyboardRemove())
 
@@ -117,6 +149,17 @@ class TaskHandler:
     # /Назначить_задачу
     async def input_closing_task(self, message: Message):
         """ Хендлер для ввода id для закрытия задачи """
+        # ограничение на использование хендлера (могут использовать исполнители и админы)
+        users = list(set(EXECUTORS + ADMINS))
+
+        available_users = list(map(int, await set_available_users(users=users)))  # type: List[int]
+
+        if message.from_user.id not in available_users:
+            kb = self.task_kb.add(GENERAL_BUTTONS)
+            await self.bot.send_message(message.from_user.id, f'Вы не имеете доступ к закрытию задачи',
+                                        reply_markup=kb)
+            return
+
         await self.fsm_task.closing_task.set()
         await message.reply("Введите id задачи, которую хотите закрыть", reply_markup=ReplyKeyboardRemove())
 

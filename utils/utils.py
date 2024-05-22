@@ -1,6 +1,8 @@
 from datetime import datetime
 from typing import List
 
+from user.db.user_db import UserDb
+
 
 def is_datetime(date: str) -> bool:
     """ Проверка формата даты """
@@ -79,3 +81,16 @@ def date_time_join(date: str, time: str) -> datetime:
     date_time_object = datetime.strptime(date_time_str, "%d.%m.%Y %H:%M")
 
     return date_time_object
+
+
+async def set_available_users(users: List[str]):
+    """ Установка пользователей с доступом """
+    available_users = []
+    user_db = UserDb()
+
+    for user in users:
+        available_user = await user_db.select_user_id_by_username(username=user)
+        available_users.append(available_user)
+    return available_users
+
+

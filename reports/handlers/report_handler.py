@@ -10,6 +10,8 @@ from settings import REPORT_BUTTONS, GENERAL_BUTTONS
 from models.report import Report
 from reports.db.report_db import ReportDb
 from tasks.db.task_db import TaskDb
+from user.user_settings import EXECUTORS, ADMINS
+from utils.utils import set_available_users
 
 
 class FsmReport(StatesGroup):
@@ -54,6 +56,17 @@ class ReportHandler:
     # Добавить отчет:
     async def add_report(self, message: Message):
         """ Хендлер для команды 'Добавить отчет' (Вход в машину состояний) """
+        # ограничение на использование хендлера (могут использовать исполнители и админы)
+        users = list(set(EXECUTORS + ADMINS))
+
+        available_users = list(map(int, await set_available_users(users=users)))  # type: List[int]
+
+        if message.from_user.id not in available_users:
+            kb = self.report_kb.add(GENERAL_BUTTONS)
+            await self.bot.send_message(message.from_user.id, f'Вы не имеете доступ к добавлению отчета',
+                                        reply_markup=kb)
+            return
+
         await self.fsm_report.title.set()
         await message.reply("Введите название отчета", reply_markup=ReplyKeyboardRemove())
 
@@ -69,6 +82,17 @@ class ReportHandler:
     # Редактировать отчет:
     async def upd_report(self, message: Message):
         """ Хендлер для команды 'Редактировать отчет' (Вход в машину состояний) """
+        # ограничение на использование хендлера (могут использовать исполнители и админы)
+        users = list(set(EXECUTORS + ADMINS))
+
+        available_users = list(map(int, await set_available_users(users=users)))  # type: List[int]
+
+        if message.from_user.id not in available_users:
+            kb = self.report_kb.add(GENERAL_BUTTONS)
+            await self.bot.send_message(message.from_user.id, f'Вы не имеете доступ к обновлению отчета',
+                                        reply_markup=kb)
+            return
+
         self.report = Report()
         await self.fsm_report.upd_uuid.set()
         await message.reply("Введите id отчета, который хотели бы изменить", reply_markup=ReplyKeyboardRemove())
@@ -77,6 +101,17 @@ class ReportHandler:
     # Удалить отчет:
     async def input_delete_report(self, message: Message):
         """ Хендлер для ввода id для удаления отчета """
+        # ограничение на использование хендлера (могут использовать исполнители и админы)
+        users = list(set(EXECUTORS + ADMINS))
+
+        available_users = list(map(int, await set_available_users(users=users)))  # type: List[int]
+
+        if message.from_user.id not in available_users:
+            kb = self.report_kb.add(GENERAL_BUTTONS)
+            await self.bot.send_message(message.from_user.id, f'Вы не имеете доступ к удалению отчета',
+                                        reply_markup=kb)
+            return
+
         await self.fsm_report.delete_report.set()
         await message.reply("Введите id отчета, который хотели бы удалить", reply_markup=ReplyKeyboardRemove())
 
