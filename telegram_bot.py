@@ -1,3 +1,4 @@
+import asyncio
 import os
 from aiogram import Bot
 from aiogram.dispatcher import Dispatcher
@@ -8,6 +9,7 @@ from db.db_settings import DB_TASKS_COMMANDS, DB_REPORTS_COMMANDS, DB_USERS_COMM
 from executor_rating.handlers.executor_rating_handler import ExecutorRatingHandler
 from general.general_handler import GeneralHandler
 from general.unknown_handler import UnknownHandler
+from notification.notification import Notification
 from reports.handlers.report_handler import ReportHandler
 from tasks.handlers.task_handler import TaskHandler
 
@@ -25,6 +27,9 @@ class TelegramBot:
         await self.db.create_table(command=DB_USERS_COMMANDS.get('create_user_table'))
         await self.db.create_table(command=DB_EXECUTORS_RATING_COMMANDS.get('create_executor_rating_table'))
         await self.db.close_connection()
+
+        notification = Notification(bot=self.bot)
+        asyncio.create_task(notification.check_executor_report())
 
     def run(self):
         general_handler = GeneralHandler(bot=self.bot)

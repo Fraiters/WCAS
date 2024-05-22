@@ -41,7 +41,7 @@ class TaskDb(BaseDb):
 
         return result
 
-    async def select_task_by_executor_id(self, executor_id: str) -> List[Tuple]:
+    async def select_task_by_executor_id(self, executor_id: str) -> Union[List[Tuple]]:
         """ Выбор задачи по id исполнителя задачи """
         command = DB_TASKS_COMMANDS.get("select_task_by_executor_id")
         result = await self.select_many_by(command=command, data=executor_id)
@@ -51,6 +51,18 @@ class TaskDb(BaseDb):
         """ Выбор задачи по уникальному id """
         command = DB_TASKS_COMMANDS.get("select_task_by_uuid")
         result = await self.select_one_by(command=command, data=uuid)
+        return result
+
+    async def select_executor_id_by_uuid(self, uuid: int) -> Union[int, None]:
+        """ Выбор исполнителя по уникальному id """
+        command = DB_TASKS_COMMANDS.get("select_executor_id_by_uuid")
+        result = await self.select_one_by(command=command, data=uuid)
+        return result[0]
+
+    async def select_uuid_by_status(self, status: str) -> Union[List[Tuple]]:
+        """ Выбор id задачи по статусу """
+        command = DB_TASKS_COMMANDS.get("select_uuid_by_status")
+        result = await self.select_many_by(command=command, data=status)
         return result
 
     async def delete_task(self, uuid: int):

@@ -18,7 +18,7 @@ class DbConnection:
             """Подключение к экземпляру БД"""
             db_settings = self.db_settings
 
-            print("Устанавливается соединение с БД")
+            # print("Устанавливается соединение с БД")
             return psycopg2.connect(
                 database=db_settings.database,
                 user=db_settings.user,
@@ -31,4 +31,5 @@ class DbConnection:
             print("Ошибка Подключения к БД", error)
 
         finally:
-            print("Соединение с БД прошло успешно")
+            pass
+            # print("Соединение с БД прошло успешно")

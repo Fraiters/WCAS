@@ -25,6 +25,8 @@ DB_TASKS_COMMANDS = {
     "select_all_tasks": 'SELECT uuid, title FROM tasks',
     "select_task_by_executor_id": 'SELECT * FROM tasks WHERE executor_id = %s',
     "select_task_by_uuid": 'SELECT * FROM tasks WHERE uuid = %s',
+    "select_uuid_by_status": 'SELECT uuid FROM tasks WHERE status = %s',
+    "select_executor_id_by_uuid": 'SELECT executor_id FROM tasks WHERE uuid = %s',
     "delete_task": 'DELETE FROM tasks WHERE uuid = %s',
     "update_task": 'UPDATE tasks SET title = %s, description = %s, status = %s, complexity = %s, deadline = %s, '
                    'closing_date = %s, previous_task = %s, next_task = %s, '
@@ -43,6 +45,7 @@ DB_REPORTS_COMMANDS = {
     "select_all_reports": 'SELECT uuid, title FROM reports',
     "select_report_by_user_id": 'SELECT * FROM reports WHERE author = %s',
     "select_report_by_uuid": 'SELECT * FROM reports WHERE uuid = %s',
+    "select_report_by_id_related_task": 'SELECT * FROM reports WHERE id_related_task = %s',
     "delete_report": 'DELETE FROM reports WHERE uuid = %s',
     "update_report": 'UPDATE reports SET title = %s, title_related_task = %s, id_related_task = %s, '
                      'description = %s, author = %s, date = %s, time = %s WHERE uuid = %s',

@@ -1,4 +1,4 @@
-from typing import Dict, Tuple, Union, List
+from typing import Dict, Tuple, Union
 
 from db.base_db import BaseDb
 from db.db_settings import DB_USERS_COMMANDS
@@ -35,14 +35,3 @@ class UserDb(BaseDb):
             # raise Exception(msg)
 
         return result[0]
-
-    async def select_all_users(self) -> List[Tuple]:
-        """ Выбор всех пользователей (их uuid user_id, username) """
-        command = DB_USERS_COMMANDS.get("select_all_users")
-        result = await self.select_all(command=command)
-
-        if result == []:
-            msg = "Таблица users - пустая"
-            raise Exception(msg)
-
-        return result
