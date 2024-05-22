@@ -5,6 +5,7 @@ from aiogram.utils import executor
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from db.base_db import BaseDb
 from db.db_settings import DB_TASKS_COMMANDS, DB_REPORTS_COMMANDS, DB_USERS_COMMANDS, DB_EXECUTORS_RATING_COMMANDS
+from executor_rating.handlers.executor_rating_handler import ExecutorRatingHandler
 from general.general_handler import GeneralHandler
 from general.unknown_handler import UnknownHandler
 from reports.handlers.report_handler import ReportHandler
@@ -29,11 +30,13 @@ class TelegramBot:
         general_handler = GeneralHandler(bot=self.bot)
         task_handler = TaskHandler(bot=self.bot)
         report_handler = ReportHandler(bot=self.bot)
+        executor_rating_handler = ExecutorRatingHandler(bot=self.bot)
         unknown_handler = UnknownHandler(bot=self.bot)
 
         general_handler.registration(dp=self.dp)
         task_handler.registration(dp=self.dp)
         report_handler.registration(dp=self.dp)
+        executor_rating_handler.registration(dp=self.dp)
         unknown_handler.registration(dp=self.dp)
 
         executor.start_polling(dispatcher=self.dp, skip_updates=True, on_startup=self.on_startup)
