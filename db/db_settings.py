@@ -61,15 +61,13 @@ DB_USERS_COMMANDS = {
 DB_EXECUTORS_RATING_COMMANDS = {
     "create_executor_rating_table": 'CREATE TABLE IF NOT EXISTS executor_rating(executor_id TEXT, '
                                     'performance_indicator REAL)',
-
     "insert_executor": 'INSERT INTO  executor_rating (executor_id, performance_indicator) '
                        'VALUES (%s, %s)',
-
     "update_performance_indicator": 'UPDATE executor_rating SET performance_indicator = %s '
                        'WHERE executor_id = %s',
-
     "select_performance_indicator_by_executor_id": 'SELECT performance_indicator FROM executor_rating '
                                                    'WHERE executor_id = %s',
-
-    "select_all_executors": 'SELECT executor_id, performance_indicator FROM executor_rating',
+    "select_all_executors_order_by_pi": 'SELECT executor_id, performance_indicator FROM executor_rating '
+                                        'ORDER BY performance_indicator DESC',
+    "delete_executor": 'DELETE FROM executor_rating WHERE executor_id = %s'
 }

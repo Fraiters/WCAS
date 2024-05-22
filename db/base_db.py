@@ -58,7 +58,7 @@ class BaseDb:
         except psycopg2.Error as error:
             print("Ошибка при работе с БД", error)
 
-    async def delete_record(self, command: str, data: int):
+    async def delete_record(self, command: str, data: Union[int, str]):
         """ Удаление записи из таблицы БД """
         try:
             self.cursor.execute(command, (data,))

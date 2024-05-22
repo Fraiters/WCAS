@@ -18,9 +18,9 @@ class ExecutorRatingDb(BaseDb):
         result = await self.select_one_by(command=command, data=executor_id)
         return result
 
-    async def select_all_executors(self) -> List[Tuple]:
+    async def select_all_executors_order_by_pi(self) -> List[Tuple]:
         """ Выбор всех строк рейтинга исполнителей (id исполнителя, показателя эффективности) """
-        command = DB_EXECUTORS_RATING_COMMANDS.get("select_all_executors")
+        command = DB_EXECUTORS_RATING_COMMANDS.get("select_all_executors_order_by_pi")
         result = await self.select_all(command=command)
 
         if result == []:
@@ -34,7 +34,7 @@ class ExecutorRatingDb(BaseDb):
         command = DB_EXECUTORS_RATING_COMMANDS.get("update_performance_indicator")
         await self.update_record(command=command, data=data)
 
-    # async def delete_executor(self, uuid: int):
-    #     """ Удаление исполнителя из рейтинга """
-    #     command = DB_EXECUTORS_RATING_COMMANDS.get("delete_executor")
-    #     await self.delete_record(command=command, data=uuid)
+    async def delete_executor(self, executor_id: str):
+        """ Удаление исполнителя из рейтинга """
+        command = DB_EXECUTORS_RATING_COMMANDS.get("delete_executor")
+        await self.delete_record(command=command, data=executor_id)

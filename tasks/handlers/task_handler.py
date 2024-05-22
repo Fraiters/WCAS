@@ -723,9 +723,6 @@ class TaskHandler:
                         await executor_rating_db.update_performance_indicator_executor(
                             data=db_data_executor_rating)
 
-                    # data_rating = await executor_rating_db.select_all_executors()
-                    # print(data_rating)
-
                     await self.bot.send_message(message.from_user.id, f"Задача с id = {uuid} успешно закрыта",
                                                 reply_markup=ReplyKeyboardRemove())
                     await state.finish()
