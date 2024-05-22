@@ -1,6 +1,5 @@
 import asyncio
 from datetime import datetime
-import time
 from typing import List
 
 from aiogram import Bot
@@ -11,12 +10,16 @@ from models.task import TASK_STATUS
 from reports.db.report_db import ReportDb
 from tasks.db.task_db import TaskDb
 from user.db.user_db import UserDb
+from user.user_settings import ADMINS
 from utils.utils import date_time_join
 
-# Предельное значение составления отчетов для исполнителя (в часах)
-LIM_EXECUTOR_HOURS_TIME = 24
+
 # Задержка для проверки отчета (в секундах - 1800 сек, в минутах - 30 мин)
 DELAY_FOR_CHECK = 60 * 30
+# Предельное значение составления отчетов для исполнителя (в часах)
+LIM_EXECUTOR_HOURS_TIME = 24
+# Предельное значение составления отчетов для руководителя (в часах)
+LIM_ADMIN_HOURS_TIME = 48
 
 
 class Notification:
@@ -75,8 +78,16 @@ class Notification:
 
                     if self.delta_hours_time > LIM_EXECUTOR_HOURS_TIME:
                         user_db = UserDb()
-                        user_id = await user_db.select_user_id_by_username(username=report.author)
+                        user_id = await user_db.select_user_id_by_username(username=self.executor_id)
                         await self.bot.send_message(user_id,
                                                     f"Не забудьте сделать отчет по задаче с id = "
                                                     f"{doing_task_id}",
                                                     reply_markup=ReplyKeyboardRemove())
+                    elif self.delta_hours_time > LIM_ADMIN_HOURS_TIME:
+                        user_db = UserDb()
+                        for admin in ADMINS:
+                            user_id = await user_db.select_user_id_by_username(username=admin)
+                            await self.bot.send_message(user_id,
+                                                        f"Исполнитель @{self.executor_id} не сделал отчет "
+                                                        f"по задаче с id = {doing_task_id}",
+                                                        reply_markup=ReplyKeyboardRemove())
