@@ -49,11 +49,13 @@ class TelegramBot:
         executor_rating_handler.registration(dp=self.dp)
         unknown_handler.registration(dp=self.dp)
 
-        executor.set_webhook(dispatcher=self.dp,
-                             webhook_path='',
-                             on_startup=self.on_startup,
-                             on_shutdown=self.on_shutdown,
-                             skip_updates=True)
+        executor.start_webhook(dispatcher=self.dp,
+                               webhook_path='',
+                               on_startup=self.on_startup,
+                               on_shutdown=self.on_shutdown,
+                               skip_updates=True,
+                               host="0.0.0.0",
+                               port=int(os.environ.get("PORT", 5000)))
 
 
 if __name__ == '__main__':
