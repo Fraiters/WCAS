@@ -2,6 +2,7 @@ from typing import List, Tuple
 
 from aiogram import Dispatcher, Bot
 from aiogram.dispatcher import FSMContext
+from aiogram.dispatcher.filters import Text
 from aiogram.dispatcher.filters.state import StatesGroup, State
 from aiogram.types import Message, ReplyKeyboardRemove
 
@@ -54,7 +55,7 @@ class ExecutorRatingHandler:
 
         executor_rating_table = text_table_layout(data=data, columns=columns)
 
-        await message.answer(executor_rating_table, reply_markup=ReplyKeyboardRemove())
+        await self.bot.send_message(message.from_user.id, executor_rating_table, reply_markup=ReplyKeyboardRemove())
 
         kb = self.executor_rating_kb.add(GENERAL_BUTTONS)
         await self.bot.send_message(message.from_user.id, 'Главное меню', reply_markup=kb)
@@ -64,8 +65,17 @@ class ExecutorRatingHandler:
     async def input_delete_executor(self, message: Message):
         """ Хендлер для ввода id исполнителя для удаления задачи """
         await self.fsm_executor_rating.delete_executor.set()
+        kb = self.executor_rating_kb.add([EXECUTOR_RATING_BUTTONS.get("executor_rating")[-1]])
         await message.reply("Введите id исполнителя, которого хотели бы убрать с рейтинга",
-                            reply_markup=ReplyKeyboardRemove())
+                            reply_markup=kb)
+
+    async def cancel(self, message: Message, state: FSMContext):
+        """ Выход из машины состояний """
+        current_state = await state.get_state()
+        if current_state is not None:
+            await state.finish()
+        kb = self.executor_rating_kb.add(GENERAL_BUTTONS)
+        await self.bot.send_message(message.from_user.id, 'Главное меню', reply_markup=kb)
 
     async def delete_executor(self, message: Message, state: FSMContext):
         """ Хендлер для команды 'Удалить исполнителя' """
@@ -74,8 +84,9 @@ class ExecutorRatingHandler:
         db_executor = await self.executor_rating_db.select_performance_indicator_by_executor_id(
             executor_id=executor_id)
         if db_executor is None:
+            kb = self.executor_rating_kb.add([EXECUTOR_RATING_BUTTONS.get("executor_rating")[-1]])
             await message.reply(f'Исполнителя с id = {executor_id} не существует\n'
-                                'Повторите попытку')
+                                'Повторите попытку', reply_markup=kb)
         else:
             await self.executor_rating_db.delete_executor(executor_id=executor_id)
             await state.finish()
@@ -91,5 +102,10 @@ class ExecutorRatingHandler:
                                     state=None)
         dp.register_message_handler(callback=self.input_delete_executor, commands=['Удалить_исполнителя'],
                                     state=None)
+        dp.register_message_handler(callback=self.cancel, commands=['Отмена'],
+                                    state='*')
+        dp.register_message_handler(self.cancel, Text(equals='Отмена', ignore_case=True),
+                                    state='*')
+
         dp.register_message_handler(callback=self.delete_executor,
                                     state=self.fsm_executor_rating.delete_executor)

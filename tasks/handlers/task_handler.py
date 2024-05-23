@@ -91,14 +91,16 @@ class TaskHandler:
 
         self.task = Task()
         await self.fsm_task.title.set()
-        await message.reply("Введите заголовок задачи", reply_markup=ReplyKeyboardRemove())
+        kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
+        await message.reply("Введите заголовок задачи", reply_markup=kb)
 
     # Уровень клавиатуры 2
     # Показать задачи:
     # /Показать_все_задачи, /Показать_задачи_по_id_исполнителя, /Показать_задачу_по_уникальному_id
     async def show_task(self, message: Message):
         """ Хендлер для команды 'Показать задачу' """
-        kb = self.task_kb.add(TASK_BUTTONS.get("show_tasks"))
+        names_button = TASK_BUTTONS.get("show_tasks") + [TASK_BUTTONS.get("task")[-1]]
+        kb = self.task_kb.add(names_button)
         await message.reply("Выберите параметры просмотра", reply_markup=kb)
 
     # Уровень клавиатуры 2
@@ -118,7 +120,8 @@ class TaskHandler:
 
         self.task = Task()
         await self.fsm_task.upd_uuid.set()
-        await message.reply("Введите id задачи, которую хотели бы изменить", reply_markup=ReplyKeyboardRemove())
+        kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
+        await message.reply("Введите id задачи, которую хотели бы изменить", reply_markup=kb)
 
     # Уровень клавиатуры 2
     # Удалить задачу:
@@ -135,15 +138,17 @@ class TaskHandler:
                                         reply_markup=kb)
             return
         await self.fsm_task.delete_task.set()
-        await message.reply("Введите id задачи, которую хотели бы удалить", reply_markup=ReplyKeyboardRemove())
+        kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
+        await message.reply("Введите id задачи, которую хотели бы удалить", reply_markup=kb)
 
     # Уровень клавиатуры 2
     # Назначить задачу:
     async def input_assign_task(self, message: Message):
         """ Хендлер для ввода id для назначения задачи """
         await self.fsm_task.assign_task.set()
+        kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
         await message.reply("Введите id задачи, которую хотели бы назначить на исполнителя",
-                            reply_markup=ReplyKeyboardRemove())
+                            reply_markup=kb)
 
     # Уровень клавиатуры 2
     # /Назначить_задачу
@@ -161,14 +166,14 @@ class TaskHandler:
             return
 
         await self.fsm_task.closing_task.set()
-        await message.reply("Введите id задачи, которую хотите закрыть", reply_markup=ReplyKeyboardRemove())
+        kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
+        await message.reply("Введите id задачи, которую хотите закрыть", reply_markup=kb)
 
     async def cancel(self, message: Message, state: FSMContext):
         """ Выход из машины состояний """
         current_state = await state.get_state()
-        if current_state is None:
-            return
-        await state.finish()
+        if current_state is not None:
+            await state.finish()
         kb = self.task_kb.add(GENERAL_BUTTONS)
         await self.bot.send_message(message.from_user.id, 'Главное меню', reply_markup=kb)
 
@@ -183,17 +188,20 @@ class TaskHandler:
             else:
                 await self.task.set_uuid(uuid=uuid)
                 await self.fsm_task.title.set()
-                await message.reply("Введите заголовок задачи", reply_markup=ReplyKeyboardRemove())
+                kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
+                await message.reply("Введите заголовок задачи", reply_markup=kb)
         except ValueError:
+            kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
             await message.reply('Неверный формат записи id\n'
-                                'Повторите попытку')
+                                'Повторите попытку', reply_markup=kb)
 
     async def check_upd_task(self, message: Message, state: FSMContext):
         """ Проверка измененной задачи """
         if message.text == TASK_BUTTONS.get("check_task")[1]:
             await state.reset_data()
             await self.fsm_task.title.set()
-            await message.reply("Введите заголовок задачи:", reply_markup=ReplyKeyboardRemove())
+            kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
+            await message.reply("Введите заголовок задачи:", reply_markup=kb)
 
         elif message.text == TASK_BUTTONS.get("check_task")[0]:
             db_data = self.task.to_dict()
@@ -220,9 +228,10 @@ class TaskHandler:
                     db_old_task = old_task.to_dict()
                     await self.task_db.update_task_by_uuid(data=db_old_task, uuid=old_task.uuid)
 
+            kb = self.task_kb.add(GENERAL_BUTTONS)
             await self.bot.send_message(message.from_user.id, "Задача изменена и сохранена\n"
                                                               f"id задачи: {self.task.uuid}",
-                                        reply_markup=ReplyKeyboardRemove())
+                                        reply_markup=kb)
 
             await state.finish()
 
@@ -247,8 +256,9 @@ class TaskHandler:
             uuid = int(message.text)
             db_task = await self.task_db.select_task_by_uuid(uuid=uuid)
             if db_task is None:
+                kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
                 await message.reply(f'Задачи с id = {uuid} не существует\n'
-                                    'Повторите попытку')
+                                    'Повторите попытку', reply_markup=kb)
             else:
                 await self.task_db.delete_task(uuid=uuid)
                 await state.finish()
@@ -257,8 +267,9 @@ class TaskHandler:
                                             reply_markup=kb)
 
         except ValueError:
+            kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
             await message.reply('Неверный формат записи id\n'
-                                'Повторите попытку')
+                                'Повторите попытку', reply_markup=kb)
 
     async def assign_task(self, message: Message):
         """ Хендлер для команды 'Назначить задачу' """
@@ -266,16 +277,18 @@ class TaskHandler:
             uuid = int(message.text)
             db_task = await self.task_db.select_task_by_uuid(uuid=uuid)
             if db_task is None:
+                kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
                 await message.reply(f'Задачи с id = {uuid} не существует\n'
-                                    'Повторите попытку')
+                                    'Повторите попытку', reply_markup=kb)
             else:
                 self.task = Task()
                 self.task.from_tuple(data=db_task)
 
                 # Проверка статуса задачи
                 if self.task.status == TASK_STATUS[2]:
+                    kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
                     await message.reply(f'Задача с id = {uuid} уже выполнена\n'
-                                        'Повторите попытку')
+                                        'Повторите попытку', reply_markup=kb)
                     await self.fsm_task.assign_task.set()
 
                 elif self.task.status == TASK_STATUS[1]:
@@ -290,20 +303,23 @@ class TaskHandler:
                 elif self.task.status == TASK_STATUS[0]:
 
                     await self.fsm_task.assign_executor_id.set()
+                    kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
                     await self.bot.send_message(message.from_user.id, "Введите id исполнителя (без знака @)",
-                                                reply_markup=ReplyKeyboardRemove())
+                                                reply_markup=kb)
 
         except ValueError:
+            kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
             await message.reply('Неверный формат записи id\n'
-                                'Повторите попытку')
+                                'Повторите попытку', reply_markup=kb)
 
     async def assign_executor_id(self, message: Message, state: FSMContext):
         """ Хендлер для назначения executor_id на задачу """
         executor_id = message.text.lower()
 
         if executor_id not in EXECUTORS:
+            kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
             await message.reply(f'Исполнителя с id = {executor_id} не существует\n'
-                                'Повторите попытку')
+                                'Повторите попытку', reply_markup=kb)
             await self.fsm_task.assign_executor_id.set()
         else:
             self.task.executor_id = executor_id
@@ -337,7 +353,7 @@ class TaskHandler:
             tasks.append(task)
 
         for task in tasks:
-            await message.answer(f"id задачи: {task.uuid}\n"
+            await self.bot.send_message(message.from_user.id, f"id задачи: {task.uuid}\n"
                                  f"Название задачи: {task.title}\n", reply_markup=ReplyKeyboardRemove())
 
         kb = self.task_kb.add(GENERAL_BUTTONS)
@@ -347,8 +363,9 @@ class TaskHandler:
         """Хендлер для ввода executor_id для команды 'Показать задачи по id исполнителя' """
 
         await self.fsm_task.show_by_executor_id.set()
+        kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
         await self.bot.send_message(message.from_user.id, "Введите id исполнителя (без знака @)",
-                                    reply_markup=ReplyKeyboardRemove())
+                                    reply_markup=kb)
 
     async def show_task_by_executor_id(self, message: Message, state: FSMContext):
         """ Хендлер для команды 'Показать задачу по id исполнителя' """
@@ -357,8 +374,9 @@ class TaskHandler:
         tasks = []  # type: List[Task]
 
         if db_tasks == []:
+            kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
             await message.reply(f'Задачи с id исполнителя = {executor_id} не найдены\n'
-                                'Повторите попытку', reply_markup=ReplyKeyboardRemove())
+                                'Повторите попытку', reply_markup=kb)
         else:
             for uuid, title, description, status, complexity, deadline, closing_date, previous_task, next_task, \
                     executor_type, executor_id in db_tasks:
@@ -378,18 +396,18 @@ class TaskHandler:
 
             await state.finish()
             for task in tasks:
-                await message.answer(f"id задачи: {task.uuid}\n"
-                                     f"Название задачи: {task.title}\n"
-                                     f"Содержание: \n{task.description}\n\n"
-                                     f"Готовность: {task.status}\n"
-                                     f"Сложность: {task.complexity}\n"
-                                     f"Срок выполнения: {task.deadline}\n"
-                                     f"Тип исполнителя: {task.executor_type}\n"
-                                     f"Исполнитель: @{task.executor_id}\n\n",
-                                     f"Предыдущая связанная задача (id): {task.previous_task}\n"
-                                     f"Следующая связанная задача (id): {task.next_task}\n"
-                                     f"Дата закрытия задачи: {task.closing_date}\n",
-                                     reply_markup=ReplyKeyboardRemove())
+                await self.bot.send_message(message.from_user.id, f"id задачи: {task.uuid}\n"
+                                            f"Название задачи: {task.title}\n"
+                                            f"Содержание: \n{task.description}\n\n"
+                                            f"Готовность: {task.status}\n"
+                                            f"Сложность: {task.complexity}\n"
+                                            f"Срок выполнения: {task.deadline}\n"
+                                            f"Тип исполнителя: {task.executor_type}\n"
+                                            f"Исполнитель: @{task.executor_id}\n\n"
+                                            f"Предыдущая связанная задача (id): {task.previous_task}\n"
+                                            f"Следующая связанная задача (id): {task.next_task}\n"
+                                            f"Дата закрытия задачи: {task.closing_date}\n",
+                                            reply_markup=ReplyKeyboardRemove())
 
             kb = self.task_kb.add(GENERAL_BUTTONS)
             await self.bot.send_message(message.from_user.id, 'Главное меню', reply_markup=kb)
@@ -398,8 +416,9 @@ class TaskHandler:
         """Хендлер для ввода uuid для команды 'Показать задачу по уникальному id' """
 
         await self.fsm_task.show_by_uuid.set()
+        kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
         await self.bot.send_message(message.from_user.id, "Введите уникальный id задачи",
-                                    reply_markup=ReplyKeyboardRemove())
+                                    reply_markup=kb)
 
     async def show_task_by_uuid(self, message: Message, state: FSMContext):
         """ Хендлер для команды 'Показать задачу по уникальному id' """
@@ -407,32 +426,35 @@ class TaskHandler:
             uuid = int(message.text)
             db_task = await self.task_db.select_task_by_uuid(uuid=uuid)
             if db_task is None:
+                kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
                 await message.reply(f'Задачи с id = {uuid} не существует\n'
-                                    'Повторите попытку')
+                                    'Повторите попытку', reply_markup=kb)
             else:
                 task = Task()
                 task.from_tuple(data=db_task)
 
                 await state.finish()
-                await message.answer(f"id задачи: {task.uuid}\n"
-                                     f"Название задачи: {task.title}\n"
-                                     f"Содержание: \n{task.description}\n\n"
-                                     f"Готовность: {task.status}\n"
-                                     f"Сложность: {task.complexity}\n"
-                                     f"Срок выполнения: {task.deadline}\n"
-                                     f"Тип исполнителя: {task.executor_type}\n"
-                                     f"Исполнитель: @{task.executor_id}\n\n"
-                                     f"Предыдущая связанная задача (id): {task.previous_task}\n"
-                                     f"Следующая связанная задача (id): {task.next_task}\n"
-                                     f"Дата закрытия задачи: {task.closing_date}\n",
-                                     reply_markup=ReplyKeyboardRemove())
+                await self.bot.send_message(message.from_user.id,
+                                            f"id задачи: {task.uuid}\n"
+                                            f"Название задачи: {task.title}\n"
+                                            f"Содержание: \n{task.description}\n\n"
+                                            f"Готовность: {task.status}\n"
+                                            f"Сложность: {task.complexity}\n"
+                                            f"Срок выполнения: {task.deadline}\n"
+                                            f"Тип исполнителя: {task.executor_type}\n"
+                                            f"Исполнитель: @{task.executor_id}\n\n"
+                                            f"Предыдущая связанная задача (id): {task.previous_task}\n"
+                                            f"Следующая связанная задача (id): {task.next_task}\n"
+                                            f"Дата закрытия задачи: {task.closing_date}\n",
+                                            reply_markup=ReplyKeyboardRemove())
 
                 kb = self.task_kb.add(GENERAL_BUTTONS)
                 await self.bot.send_message(message.from_user.id, 'Главное меню', reply_markup=kb)
 
         except ValueError:
+            kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
             await message.reply('Неверный формат записи id\n'
-                                'Повторите попытку')
+                                'Повторите попытку', reply_markup=kb)
 
     async def load_title(self, message: Message, state: FSMContext):
         """ Загрузка заголовка задачи """
@@ -442,19 +464,22 @@ class TaskHandler:
             task_id = await self.task_db.select_uuid_by_title(title=data['title'])
             if task_id is not None:
                 await message.reply(f'Задача с таким названием уже существует \n'
-                                    'Повторите попытку')
+                                    'Повторите попытку', reply_markup=ReplyKeyboardRemove())
                 await self.fsm_task.title.set()
-                await message.reply("Введите название задачи", reply_markup=ReplyKeyboardRemove())
+                kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
+                await message.reply("Введите название задачи", reply_markup=kb)
                 return
         await self.fsm_task.description.set()
-        await message.reply('Введите описание задачи', reply_markup=ReplyKeyboardRemove())
+        kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
+        await message.reply('Введите описание задачи', reply_markup=kb)
 
     async def load_description(self, message: Message, state: FSMContext):
         """ Загрузка описания """
         async with state.proxy() as data:
             data['description'] = message.text
         await self.fsm_task.complexity.set()
-        kb = self.task_kb.add(TASK_BUTTONS.get("complexity"))
+        names_button = TASK_BUTTONS.get("complexity") + [(TASK_BUTTONS.get("task")[-1])]
+        kb = self.task_kb.add(names_button)
         await message.reply('Выберите сложность задачи', reply_markup=kb)
 
     async def load_complexity(self, message: Message, state: FSMContext):
@@ -462,7 +487,8 @@ class TaskHandler:
         async with state.proxy() as data:
             data['complexity'] = message.text[1:]
         await self.fsm_task.deadline.set()
-        await message.reply('Введите дедлайн для выполнения задачи dd.mm.yyyy', reply_markup=ReplyKeyboardRemove())
+        kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
+        await message.reply('Введите дедлайн для выполнения задачи dd.mm.yyyy', reply_markup=kb)
 
     async def load_deadline(self, message: Message, state: FSMContext):
         """ Загрузка дедлайна """
@@ -470,23 +496,27 @@ class TaskHandler:
             async with state.proxy() as data:
                 data['deadline'] = message.text
             await self.fsm_task.prepare_previous_task.set()
-            kb = self.task_kb.add(TASK_BUTTONS.get("prepare"))
+            names_button = TASK_BUTTONS.get("prepare") + [(TASK_BUTTONS.get("task")[-1])]
+            kb = self.task_kb.add(names_button)
             await message.reply('Желаете назначить предыдущую связанную задачу?', reply_markup=kb)
 
         else:
+            kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
             await message.reply('Неверный формат записи даты\n'
-                                'Повторите попытку (правильный формат: dd.mm.yyyy)')
+                                'Повторите попытку (правильный формат: dd.mm.yyyy)', reply_markup=kb)
 
     async def prepare_previous_task(self, message: Message):
         """ Подготовка к вводу предыдущей связанной задачи """
         if message.text == TASK_BUTTONS.get("prepare")[1]:
             await self.fsm_task.prepare_next_task.set()
-            kb = self.task_kb.add(TASK_BUTTONS.get("prepare"))
+            names_button = TASK_BUTTONS.get("prepare") + [(TASK_BUTTONS.get("task")[-1])]
+            kb = self.task_kb.add(names_button)
             await message.reply('Желаете назначить следующую связанную задачу?', reply_markup=kb)
 
         elif message.text == TASK_BUTTONS.get("prepare")[0]:
             await self.fsm_task.previous_task.set()
-            await message.reply('Введите id связанной предыдущей задачи', reply_markup=ReplyKeyboardRemove())
+            kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
+            await message.reply('Введите id связанной предыдущей задачи', reply_markup=kb)
 
     async def load_previous_task(self, message: Message, state: FSMContext):
         """ Загрузка предыдущей задачи """
@@ -495,8 +525,9 @@ class TaskHandler:
             db_task = await self.task_db.select_task_by_uuid(uuid=uuid)  # type: Tuple
 
             if db_task is None:
+                kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
                 await message.reply(f'Задачи с id = {uuid} не существует\n'
-                                    'Повторите попытку')
+                                    'Повторите попытку', reply_markup=kb)
                 await self.fsm_task.previous_task.set()
                 return
             else:
@@ -508,7 +539,8 @@ class TaskHandler:
                         data['previous_task'] = uuid
 
                     await self.fsm_task.prepare_next_task.set()
-                    kb = self.task_kb.add(TASK_BUTTONS.get("prepare"))
+                    names_button = TASK_BUTTONS.get("prepare") + [(TASK_BUTTONS.get("task")[-1])]
+                    kb = self.task_kb.add(names_button)
                     await message.reply('Желаете назначить следующую связанную задачу?', reply_markup=kb)
                 # если следующая задача у связанной предыдущей задачи уже назначена
                 else:
@@ -516,14 +548,16 @@ class TaskHandler:
                         data['previous_task'] = uuid
 
                     await self.fsm_task.check_previous_task.set()
-                    kb = self.task_kb.add(TASK_BUTTONS.get("check_task"))
+                    names_button = TASK_BUTTONS.get("check_task") + [(TASK_BUTTONS.get("task")[-1])]
+                    kb = self.task_kb.add(names_button)
                     await message.reply('!ВНИМАНИЕ!\n'
                                         'У выбранной предыдущей связанной задачи уже есть связанная следующая задача\n'
                                         'Желаете продолжить?', reply_markup=kb)
 
         except ValueError:
+            kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
             await message.reply('Неверный формат записи id\n'
-                                'Повторите попытку')
+                                'Повторите попытку', reply_markup=kb)
 
     async def check_previous_task(self, message: Message, state: FSMContext):
         """ Проверка предыдущей связанной задачи"""
@@ -532,24 +566,28 @@ class TaskHandler:
             async with state.proxy() as data:
                 data['previous_task'] = None
             await self.fsm_task.previous_task.set()
-            await message.reply('Введите заново id связанной предыдущей задачи', reply_markup=ReplyKeyboardRemove())
+            kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
+            await message.reply('Введите заново id связанной предыдущей задачи', reply_markup=kb)
 
         elif message.text == TASK_BUTTONS.get("check_task")[0]:
 
             await self.fsm_task.prepare_next_task.set()
-            kb = self.task_kb.add(TASK_BUTTONS.get("prepare"))
+            names_button = TASK_BUTTONS.get("prepare") + [(TASK_BUTTONS.get("task")[-1])]
+            kb = self.task_kb.add(names_button)
             await message.reply('Желаете назначить следующую связанную задачу?', reply_markup=kb)
 
     async def prepare_next_task(self, message: Message):
         """ Подготовка к вводу следующей связанной задачи """
         if message.text == TASK_BUTTONS.get("prepare")[1]:
             await self.fsm_task.executor_type.set()
-            kb = self.task_kb.add(TASK_BUTTONS.get("executor_type"))
+            names_button = TASK_BUTTONS.get("executor_type") + [(TASK_BUTTONS.get("task")[-1])]
+            kb = self.task_kb.add(names_button)
             await message.reply('Выберите тип исполнителя', reply_markup=kb)
 
         elif message.text == TASK_BUTTONS.get("prepare")[0]:
             await self.fsm_task.next_task.set()
-            await message.reply('Введите id связанной следующей задачи', reply_markup=ReplyKeyboardRemove())
+            kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
+            await message.reply('Введите id связанной следующей задачи', reply_markup=kb)
 
     async def load_next_task(self, message: Message, state: FSMContext):
         """ Загрузка следующей задачи """
@@ -558,8 +596,9 @@ class TaskHandler:
             db_task = await self.task_db.select_task_by_uuid(uuid=uuid)  # type: Tuple
 
             if db_task is None:
+                kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
                 await message.reply(f'Задачи с id = {uuid} не существует\n'
-                                    'Повторите попытку')
+                                    'Повторите попытку', reply_markup=kb)
                 await self.fsm_task.next_task.set()
                 return
             else:
@@ -571,7 +610,8 @@ class TaskHandler:
                         data['next_task'] = uuid
 
                     await self.fsm_task.executor_type.set()
-                    kb = self.task_kb.add(TASK_BUTTONS.get("executor_type"))
+                    names_button = TASK_BUTTONS.get("executor_type") + [(TASK_BUTTONS.get("task")[-1])]
+                    kb = self.task_kb.add(names_button)
                     await message.reply('Выберите тип исполнителя', reply_markup=kb)
                 # если предыдущая задача у связанной следующей задачи уже назначена
                 else:
@@ -579,14 +619,16 @@ class TaskHandler:
                         data['next_task'] = uuid
 
                     await self.fsm_task.check_next_task.set()
-                    kb = self.task_kb.add(TASK_BUTTONS.get("check_task"))
+                    names_button = TASK_BUTTONS.get("check_task") + [(TASK_BUTTONS.get("task")[-1])]
+                    kb = self.task_kb.add(names_button)
                     await message.reply('!ВНИМАНИЕ!\n'
                                         'У выбранной следующей связанной задачи уже есть связанная предыдущая задача\n'
                                         'Желаете продолжить?', reply_markup=kb)
 
         except ValueError:
+            kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
             await message.reply('Неверный формат записи id\n'
-                                'Повторите попытку')
+                                'Повторите попытку', reply_markup=kb)
 
     async def check_next_task(self, message: Message, state: FSMContext):
         """ Проверка следующей связанной задачи"""
@@ -595,12 +637,14 @@ class TaskHandler:
             async with state.proxy() as data:
                 data['next_task'] = None
             await self.fsm_task.next_task.set()
-            await message.reply('Введите заново id связанной следующей задачи', reply_markup=ReplyKeyboardRemove())
+            kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
+            await message.reply('Введите заново id связанной следующей задачи', reply_markup=kb)
 
         elif message.text == TASK_BUTTONS.get("check_task")[0]:
 
             await self.fsm_task.executor_type.set()
-            kb = self.task_kb.add(TASK_BUTTONS.get("executor_type"))
+            names_button = TASK_BUTTONS.get("executor_type") + [(TASK_BUTTONS.get("task")[-1])]
+            kb = self.task_kb.add(names_button)
             await message.reply('Выберите тип исполнителя', reply_markup=kb)
 
     async def load_executor_type(self, message: Message, state: FSMContext):
@@ -608,7 +652,8 @@ class TaskHandler:
         async with state.proxy() as data:
             data['executor_type'] = message.text[1:]
         await self.fsm_task.prepare_executor_id.set()
-        kb = self.task_kb.add(TASK_BUTTONS.get("prepare"))
+        names_button = TASK_BUTTONS.get("prepare") + [(TASK_BUTTONS.get("task")[-1])]
+        kb = self.task_kb.add(names_button)
         await message.reply('Желаете сразу назначить исполнителя задачи?', reply_markup=kb)
 
     async def prepare_executor_id(self, message: Message, state: FSMContext):
@@ -624,12 +669,14 @@ class TaskHandler:
             else:
                 await self.fsm_task.check_upd_task.set()
 
-            kb = self.task_kb.add(TASK_BUTTONS.get("check_task"))
+            names_button = TASK_BUTTONS.get("check_task") + [(TASK_BUTTONS.get("task")[-1])]
+            kb = self.task_kb.add(names_button)
             await self.bot.send_message(message.from_user.id, "Все верно?", reply_markup=kb)
 
         elif message.text == TASK_BUTTONS.get("prepare")[0]:
             await self.fsm_task.executor_id.set()
-            await message.reply('Введите id исполнителя задачи (без знака @)', reply_markup=ReplyKeyboardRemove())
+            kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
+            await message.reply('Введите id исполнителя задачи (без знака @)', reply_markup=kb)
 
     async def load_executor_id(self, message: Message, state: FSMContext):
         """ Загрузка id исполнителя """
@@ -638,8 +685,9 @@ class TaskHandler:
             executor_id = message.text.lower()
 
             if executor_id not in EXECUTORS:
+                kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
                 await message.reply(f'Исполнителя с id = {executor_id} не существует\n'
-                                    'Повторите попытку')
+                                    'Повторите попытку', reply_markup=kb)
                 await self.fsm_task.executor_id.set()
                 return
 
@@ -653,7 +701,8 @@ class TaskHandler:
         else:
             await self.fsm_task.check_upd_task.set()
 
-        kb = self.task_kb.add(TASK_BUTTONS.get("check_task"))
+        names_button = TASK_BUTTONS.get("check_task") + [(TASK_BUTTONS.get("task")[-1])]
+        kb = self.task_kb.add(names_button)
         await self.bot.send_message(message.from_user.id, "Все верно?", reply_markup=kb)
 
     async def check_add_task(self, message: Message, state: FSMContext):
@@ -661,7 +710,8 @@ class TaskHandler:
         if message.text == TASK_BUTTONS.get("check_task")[1]:
             await state.reset_data()
             await self.fsm_task.title.set()
-            await message.reply("Введите заголовок задачи:", reply_markup=ReplyKeyboardRemove())
+            kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
+            await message.reply("Введите заголовок задачи:", reply_markup=kb)
 
         elif message.text == TASK_BUTTONS.get("check_task")[0]:
             db_data = self.task.to_dict()
@@ -704,7 +754,7 @@ class TaskHandler:
             kb = self.task_kb.add(GENERAL_BUTTONS)
             await self.bot.send_message(message.from_user.id, 'Главное меню', reply_markup=kb)
         else:
-            kb = self.task_kb.add(TASK_BUTTONS.get("check_task"))
+            kb = self.task_kb.add(TASK_BUTTONS.get("check_task").append(TASK_BUTTONS.get("task")[-1]))
             await message.reply('Такой команды нет\n'
                                 'Повторите попытку', reply_markup=kb)
 
@@ -715,22 +765,25 @@ class TaskHandler:
             db_task = await self.task_db.select_task_by_uuid(uuid=uuid)
 
             if db_task is None:
+                kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
                 await message.reply(f'Задачи с id = {uuid} не существует\n'
-                                    'Повторите попытку', reply_markup=ReplyKeyboardRemove())
+                                    'Повторите попытку', reply_markup=kb)
             else:
                 task = Task()
                 task.from_tuple(data=db_task)
                 if task.status == TASK_STATUS[0]:
+                    kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
                     await message.reply(f'Задача с id = {uuid} еще не назначена\n'
                                         'Прежде чем ее закрывать, необходимо назначить исполнителя и выполнить задачу',
-                                        reply_markup=ReplyKeyboardRemove())
+                                        reply_markup=kb)
                     await state.finish()
                     kb = self.task_kb.add(GENERAL_BUTTONS)
                     await self.bot.send_message(message.from_user.id, 'Главное меню', reply_markup=kb)
 
                 elif task.status == TASK_STATUS[2]:
+                    kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
                     await message.reply(f'Задача с id = {uuid} уже закрыта\n'
-                                        'Повторите попытку', reply_markup=ReplyKeyboardRemove())
+                                        'Повторите попытку', reply_markup=kb)
                 else:
                     # обновление данных задачи
                     task.status = TASK_STATUS[2]
@@ -773,8 +826,9 @@ class TaskHandler:
                     kb = self.task_kb.add(GENERAL_BUTTONS)
                     await self.bot.send_message(message.from_user.id, 'Главное меню', reply_markup=kb)
         except ValueError:
+            kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
             await message.reply('Неверный формат записи id\n'
-                                'Повторите попытку')
+                                'Повторите попытку', reply_markup=kb)
 
     def registration(self, dp: Dispatcher):
         """Регистрация хендлеров для задач"""

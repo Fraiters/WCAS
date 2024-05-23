@@ -68,14 +68,16 @@ class ReportHandler:
             return
 
         await self.fsm_report.title.set()
-        await message.reply("Введите название отчета", reply_markup=ReplyKeyboardRemove())
+        kb = self.report_kb.add([REPORT_BUTTONS.get("report")[-1]])
+        await message.reply("Введите название отчета", reply_markup=kb)
 
     # Уровень клавиатуры 2
     # Показать отчеты:
     # /Показать_все_отчеты, /Показать_отчеты_по_id_исполнителя, /Показать_отчет_по_уникальному_id
     async def show_report(self, message: Message):
         """ Хендлер для команды 'Показать отчет' """
-        kb = self.report_kb.add(REPORT_BUTTONS.get("show_reports"))
+        names_button = REPORT_BUTTONS.get("show_reports") + [REPORT_BUTTONS.get("report")[-1]]
+        kb = self.report_kb.add(names_button)
         await message.reply("Выберите параметры просмотра", reply_markup=kb)
 
     # Уровень клавиатуры 2
@@ -95,7 +97,8 @@ class ReportHandler:
 
         self.report = Report()
         await self.fsm_report.upd_uuid.set()
-        await message.reply("Введите id отчета, который хотели бы изменить", reply_markup=ReplyKeyboardRemove())
+        kb = self.report_kb.add([REPORT_BUTTONS.get("report")[-1]])
+        await message.reply("Введите id отчета, который хотели бы изменить", reply_markup=kb)
 
     # Уровень клавиатуры 2
     # Удалить отчет:
@@ -113,14 +116,14 @@ class ReportHandler:
             return
 
         await self.fsm_report.delete_report.set()
-        await message.reply("Введите id отчета, который хотели бы удалить", reply_markup=ReplyKeyboardRemove())
+        kb = self.report_kb.add([REPORT_BUTTONS.get("report")[-1]])
+        await message.reply("Введите id отчета, который хотели бы удалить", reply_markup=kb)
 
     async def cancel(self, message: Message, state: FSMContext):
         """ Выход из машины состояний """
         current_state = await state.get_state()
-        if current_state is None:
-            return
-        await state.finish()
+        if current_state is not None:
+            await state.finish()
         kb = self.report_kb.add(GENERAL_BUTTONS)
         await self.bot.send_message(message.from_user.id, 'Главное меню', reply_markup=kb)
 
@@ -130,25 +133,29 @@ class ReportHandler:
             uuid = int(message.text)
             db_report = await self.report_db.select_report_by_uuid(uuid=uuid)
             if db_report is None:
+                kb = self.report_kb.add([REPORT_BUTTONS.get("report")[-1]])
                 await message.reply(f'Отчета с id = {uuid} не существует\n'
-                                    'Повторите попытку')
+                                    'Повторите попытку', reply_markup=kb)
             else:
                 async with state.proxy() as data:
                     data['uuid'] = uuid
 
                 await self.report.set_uuid(uuid=uuid)
                 await self.fsm_report.title.set()
-                await message.reply("Введите заголовок отчета", reply_markup=ReplyKeyboardRemove())
+                kb = self.report_kb.add([REPORT_BUTTONS.get("report")[-1]])
+                await message.reply("Введите заголовок отчета", reply_markup=kb)
         except ValueError:
+            kb = self.report_kb.add([REPORT_BUTTONS.get("report")[-1]])
             await message.reply('Неверный формат записи id\n'
-                                'Повторите попытку')
+                                'Повторите попытку', reply_markup=kb)
 
     async def check_upd_report(self, message: Message, state: FSMContext):
         """ Проверка измененного отчета """
         if message.text == REPORT_BUTTONS.get("check_report")[1]:
             await state.reset_data()
             await self.fsm_report.title.set()
-            await message.reply("Введите заголовок отчета:", reply_markup=ReplyKeyboardRemove())
+            kb = self.report_kb.add([REPORT_BUTTONS.get("report")[-1]])
+            await message.reply("Введите заголовок отчета:", reply_markup=kb)
 
         elif message.text == REPORT_BUTTONS.get("check_report")[0]:
             db_data = self.report.to_dict()
@@ -161,7 +168,8 @@ class ReportHandler:
             kb = self.report_kb.add(GENERAL_BUTTONS)
             await self.bot.send_message(message.from_user.id, 'Главное меню', reply_markup=kb)
         else:
-            kb = self.report_kb.add(REPORT_BUTTONS.get("check_report"))
+            names_button = REPORT_BUTTONS.get("check_report") + [REPORT_BUTTONS.get("report")[-1]]
+            kb = self.report_kb.add(names_button)
             await message.reply('Такой команды нет\n'
                                 'Повторите попытку', reply_markup=kb)
 
@@ -171,8 +179,9 @@ class ReportHandler:
             uuid = int(message.text)
             db_report = await self.report_db.select_report_by_uuid(uuid=uuid)
             if db_report is None:
+                kb = self.report_kb.add([REPORT_BUTTONS.get("report")[-1]])
                 await message.reply(f'Отчета с id = {uuid} не существует\n'
-                                    'Повторите попытку')
+                                    'Повторите попытку', reply_markup=kb)
             else:
                 await self.report_db.delete_report(uuid=uuid)
                 await state.finish()
@@ -181,8 +190,9 @@ class ReportHandler:
                                             reply_markup=kb)
 
         except ValueError:
+            kb = self.report_kb.add([REPORT_BUTTONS.get("report")[-1]])
             await message.reply('Неверный формат записи id\n'
-                                'Повторите попытку')
+                                'Повторите попытку', reply_markup=kb)
 
     async def show_all_reports(self, message: Message):
         """ Хендлер для команды 'Показать все отчеты' """
@@ -197,8 +207,9 @@ class ReportHandler:
             reports.append(report)
 
         for report in reports:
-            await message.answer(f"id отчета: {report.uuid}\n"
-                                 f"Название отчета: {report.title}\n", reply_markup=ReplyKeyboardRemove())
+            await self.bot.send_message(message.from_user.id,
+                                        f"id отчета: {report.uuid}\n"
+                                        f"Название отчета: {report.title}\n", reply_markup=ReplyKeyboardRemove())
 
         kb = self.report_kb.add(GENERAL_BUTTONS)
         await self.bot.send_message(message.from_user.id, 'Главное меню', reply_markup=kb)
@@ -207,8 +218,9 @@ class ReportHandler:
         """ Хендлер для ввода user_id для команды 'Показать отчет по id исполнителя' """
 
         await self.fsm_report.show_by_user_id.set()
+        kb = self.report_kb.add([REPORT_BUTTONS.get("report")[-1]])
         await self.bot.send_message(message.from_user.id, "Введите id исполнителя (без знака @)",
-                                    reply_markup=ReplyKeyboardRemove())
+                                    reply_markup=kb)
 
     async def show_report_by_user_id(self, message: Message, state: FSMContext):
         """ Хендлер для команды 'Показать отчет по id исполнителя' """
@@ -217,8 +229,9 @@ class ReportHandler:
         reports = []  # type: List[Report]
 
         if db_reports == []:
+            kb = self.report_kb.add([REPORT_BUTTONS.get("report")[-1]])
             await message.reply(f'Отчеты с id исполнителя = {user_id} не найдены\n'
-                                'Повторите попытку', reply_markup=ReplyKeyboardRemove())
+                                'Повторите попытку', reply_markup=kb)
         else:
             for uuid, title, title_related_task, id_related_task, description, author, date, time in db_reports:
                 report = Report()
@@ -234,14 +247,16 @@ class ReportHandler:
 
             await state.finish()
             for report in reports:
-                await message.answer(f"id отчета: {report.uuid}\n"
-                                     f"Название отчета: {report.title}\n"
-                                     f"Отчет по задаче: {report.title_related_task}\n"
-                                     f"id связанной задачи: {report.id_related_task}\n"
-                                     f"Содержание: \n{report.description}\n\n"
-                                     f"Автор: @{report.author}\n"
-                                     f"Дата составления отчета: {report.date}\n"
-                                     f"Время составления отчета: {report.time}\n", reply_markup=ReplyKeyboardRemove())
+                await self.bot.send_message(message.from_user.id,
+                                            f"id отчета: {report.uuid}\n"
+                                            f"Название отчета: {report.title}\n"
+                                            f"Отчет по задаче: {report.title_related_task}\n"
+                                            f"id связанной задачи: {report.id_related_task}\n"
+                                            f"Содержание: \n{report.description}\n\n"
+                                            f"Автор: @{report.author}\n"
+                                            f"Дата составления отчета: {report.date}\n"
+                                            f"Время составления отчета: {report.time}\n",
+                                            reply_markup=ReplyKeyboardRemove())
 
             kb = self.report_kb.add(GENERAL_BUTTONS)
             await self.bot.send_message(message.from_user.id, 'Главное меню', reply_markup=kb)
@@ -250,8 +265,9 @@ class ReportHandler:
         """ Хендлер для ввода uuid для команды 'Показать отчет по уникальному id' """
 
         await self.fsm_report.show_by_uuid.set()
+        kb = self.report_kb.add([REPORT_BUTTONS.get("report")[-1]])
         await self.bot.send_message(message.from_user.id, "Введите уникальный id отчета",
-                                    reply_markup=ReplyKeyboardRemove())
+                                    reply_markup=kb)
 
     async def show_report_by_uuid(self, message: Message, state: FSMContext):
         """ Хендлер для команды 'Показать отчет по уникальному id' """
@@ -259,35 +275,32 @@ class ReportHandler:
             uuid = int(message.text)
             db_report = await self.report_db.select_report_by_uuid(uuid=uuid)
             if db_report is None:
+                kb = self.report_kb.add([REPORT_BUTTONS.get("report")[-1]])
                 await message.reply(f'Отчета с id = {uuid} не существует\n'
-                                    'Повторите попытку')
+                                    'Повторите попытку', reply_markup=kb)
             else:
                 report = Report()
-                for uuid, title, title_related_task, id_related_task, description, author, date, time in [db_report]:
-                    report.uuid = uuid
-                    report.title = title
-                    report.title_related_task = title_related_task
-                    report.id_related_task = id_related_task
-                    report.description = description
-                    report.author = author
-                    report.date = date
-                    report.time = time
+                report.from_tuple(data=db_report)
+
                 await state.finish()
-                await message.answer(f"id отчета: {report.uuid}\n"
-                                     f"Название отчета: {report.title}\n"
-                                     f"Отчет по задаче: {report.title_related_task}\n"
-                                     f"id связанной задачи: {report.id_related_task}\n"
-                                     f"Содержание: \n{report.description}\n\n"
-                                     f"Автор: @{report.author}\n"
-                                     f"Дата составления отчета: {report.date}\n"
-                                     f"Время составления отчета: {report.time}\n", reply_markup=ReplyKeyboardRemove())
+                await self.bot.send_message(message.from_user.id,
+                                            f"id отчета: {report.uuid}\n"
+                                            f"Название отчета: {report.title}\n"
+                                            f"Отчет по задаче: {report.title_related_task}\n"
+                                            f"id связанной задачи: {report.id_related_task}\n"
+                                            f"Содержание: \n{report.description}\n\n"
+                                            f"Автор: @{report.author}\n"
+                                            f"Дата составления отчета: {report.date}\n"
+                                            f"Время составления отчета: {report.time}\n",
+                                            reply_markup=ReplyKeyboardRemove())
 
                 kb = self.report_kb.add(GENERAL_BUTTONS)
                 await self.bot.send_message(message.from_user.id, 'Главное меню', reply_markup=kb)
 
         except ValueError:
+            kb = self.report_kb.add([REPORT_BUTTONS.get("report")[-1]])
             await message.reply('Неверный формат записи id\n'
-                                'Повторите попытку')
+                                'Повторите попытку', reply_markup=kb)
 
     async def load_title(self, message: Message, state: FSMContext):
         """ Загрузка заголовка отчета """
@@ -298,12 +311,14 @@ class ReportHandler:
             report_id = await self.report_db.select_uuid_by_title(title=data['title'])
             if report_id is not None:
                 await message.reply(f'Отчет с таким названием уже существует \n'
-                                    'Повторите попытку')
+                                    'Повторите попытку', reply_markup=ReplyKeyboardRemove())
                 await self.fsm_report.title.set()
-                await message.reply("Введите название отчета", reply_markup=ReplyKeyboardRemove())
+                kb = self.report_kb.add([REPORT_BUTTONS.get("report")[-1]])
+                await message.reply("Введите название отчета", reply_markup=kb)
                 return
         await self.fsm_report.id_related_task.set()
-        await message.reply("Введите id связанной задачи", reply_markup=ReplyKeyboardRemove())
+        kb = self.report_kb.add([REPORT_BUTTONS.get("report")[-1]])
+        await message.reply("Введите id связанной задачи", reply_markup=kb)
 
     async def load_id_related_task(self, message: Message, state: FSMContext):
         """ Загрузка id связанной задачи """
@@ -314,15 +329,18 @@ class ReportHandler:
                 title_related_task = await self.task_db.select_title_by_uuid(uuid=data['id_related_task'])
 
                 if title_related_task is None:
+                    kb = self.report_kb.add([REPORT_BUTTONS.get("report")[-1]])
                     await message.reply(f'Задачи с id = {data["id_related_task"]} не существует\n'
-                                        'Повторите попытку')
+                                        'Повторите попытку', reply_markup=kb)
                 else:
                     data['title_related_task'] = title_related_task[0]
                     await self.fsm_report.description.set()
-                    await message.reply('Введите содержание отчета', reply_markup=ReplyKeyboardRemove())
+                    kb = self.report_kb.add([REPORT_BUTTONS.get("report")[-1]])
+                    await message.reply('Введите содержание отчета', reply_markup=kb)
         except ValueError:
+            kb = self.report_kb.add([REPORT_BUTTONS.get("report")[-1]])
             await message.reply('Неверный формат записи id\n'
-                                'Повторите попытку')
+                                'Повторите попытку', reply_markup=kb)
 
     async def load_description(self, message: Message, state: FSMContext):
         """ Загрузка содержания """
@@ -336,16 +354,17 @@ class ReportHandler:
             await self.fsm_report.check_add_report.set()
         else:
             await self.fsm_report.check_upd_report.set()
-
-        kb = self.report_kb.add(REPORT_BUTTONS.get("check_report"))
+        names_button = REPORT_BUTTONS.get("check_report") + [REPORT_BUTTONS.get("report")[-1]]
+        kb = self.report_kb.add(names_button)
         await self.bot.send_message(message.from_user.id, "Все верно?", reply_markup=kb)
 
     async def check_add_report(self, message: Message, state: FSMContext):
         """ Проверка отчета """
         if message.text == REPORT_BUTTONS.get("check_report")[1]:
             await self.fsm_report.title.set()
+            kb = self.report_kb.add([REPORT_BUTTONS.get("report")[-1]])
             await self.bot.send_message(message.from_user.id, "Введите заголовок отчета:",
-                                        reply_markup=ReplyKeyboardRemove())
+                                        reply_markup=kb)
         elif message.text == REPORT_BUTTONS.get("check_report")[0]:
             db_data = self.report.to_dict()
             await self.report_db.insert_record_report(data=db_data)
@@ -358,7 +377,8 @@ class ReportHandler:
             kb = self.report_kb.add(GENERAL_BUTTONS)
             await self.bot.send_message(message.from_user.id, 'Главное меню', reply_markup=kb)
         else:
-            kb = self.report_kb.add(REPORT_BUTTONS.get("check_report"))
+            names_button = REPORT_BUTTONS.get("check_report") + [REPORT_BUTTONS.get("report")[-1]]
+            kb = self.report_kb.add(names_button)
             await message.reply('Такой команды нет\n'
                                 'Повторите попытку', reply_markup=kb)
 

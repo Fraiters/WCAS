@@ -37,7 +37,7 @@ class GeneralHandler:
                 await self.user_db.insert_record_user(data=db_user_data)
 
         except:
-            await message.reply('Общение с ботом через лс, пожалуйста напишите ему: \n @work_control_accounting_bot')
+            await message.reply('Для общения с ботом необходимо, чтобы вас добавили в группу: "Work Control" ')
 
     def registration(self, dp: Dispatcher):
         """Регистрация главных хендлеров"""
