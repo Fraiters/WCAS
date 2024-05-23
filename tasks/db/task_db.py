@@ -41,7 +41,7 @@ class TaskDb(BaseDb):
 
         return result
 
-    async def select_task_by_executor_id(self, executor_id: str) -> Union[List[Tuple]]:
+    async def select_task_by_executor_id(self, executor_id: str) -> List[Tuple]:
         """ Выбор задачи по id исполнителя задачи """
         command = DB_TASKS_COMMANDS.get("select_task_by_executor_id")
         result = await self.select_many_by(command=command, data=executor_id)
