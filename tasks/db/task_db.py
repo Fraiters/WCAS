@@ -35,9 +35,9 @@ class TaskDb(BaseDb):
         command = DB_TASKS_COMMANDS.get("select_all_tasks")
         result = await self.select_all(command=command)
 
-        if result == []:
-            msg = "Таблица tasks - пустая"
-            raise Exception(msg)
+        # if result == []:
+        #     msg = "Таблица tasks - пустая"
+        #     raise Exception(msg)
 
         return result
 

@@ -29,9 +29,9 @@ class ReportDb(BaseDb):
         command = DB_REPORTS_COMMANDS.get("select_all_reports")
         result = await self.select_all(command=command)
 
-        if result == []:
-            msg = "Таблица reports - пустая"
-            raise Exception(msg)
+        # if result == []:
+        #     msg = "Таблица reports - пустая"
+        #     raise Exception(msg)
 
         return result
 

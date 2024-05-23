@@ -345,6 +345,12 @@ class TaskHandler:
         """ Хендлер для команды 'Показать все задачи' """
         db_tasks = await self.task_db.select_all_tasks()  # type: List[Tuple]
 
+        if db_tasks == []:
+            kb = self.task_kb.add(GENERAL_BUTTONS)
+            await self.bot.send_message(message.from_user.id, f"В системе нет ни одной задачи",
+                                        reply_markup=kb)
+            return
+
         tasks = []  # type: List[Task]
         for uuid, title in db_tasks:
             task = Task()
@@ -353,8 +359,9 @@ class TaskHandler:
             tasks.append(task)
 
         for task in tasks:
-            await self.bot.send_message(message.from_user.id, f"id задачи: {task.uuid}\n"
-                                 f"Название задачи: {task.title}\n", reply_markup=ReplyKeyboardRemove())
+            await self.bot.send_message(message.from_user.id,
+                                        f"id задачи: {task.uuid}\n"
+                                        f"Название задачи: {task.title}\n", reply_markup=ReplyKeyboardRemove())
 
         kb = self.task_kb.add(GENERAL_BUTTONS)
         await self.bot.send_message(message.from_user.id, 'Главное меню', reply_markup=kb)

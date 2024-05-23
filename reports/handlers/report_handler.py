@@ -198,6 +198,12 @@ class ReportHandler:
         """ Хендлер для команды 'Показать все отчеты' """
         db_reports = await self.report_db.select_all_reports()  # type: List[Tuple]
 
+        if db_reports == []:
+            kb = self.report_kb.add(GENERAL_BUTTONS)
+            await self.bot.send_message(message.from_user.id, f"В системе нет ни одного отчета",
+                                        reply_markup=kb)
+            return
+
         reports = []  # type: List[Report]
 
         for uuid, title in db_reports:
