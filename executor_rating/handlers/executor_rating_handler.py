@@ -43,6 +43,14 @@ class ExecutorRatingHandler:
     async def show_executor_rating(self, message: Message):
         """ Хендлер для команды 'Показать рейтинг' """
         db_executor_rating = await self.executor_rating_db.select_all_executors_order_by_pi()  # type: List[Tuple]
+
+        if db_executor_rating == []:
+            kb = self.executor_rating_kb.add(GENERAL_BUTTONS)
+            await self.bot.send_message(message.from_user.id,
+                                        f"Рейтинг не сформирован т.к. еще никто не закрыл задачу",
+                                        reply_markup=kb)
+            return
+
         data = []
         # перевод всех элементов в str
         for line in db_executor_rating:

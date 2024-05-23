@@ -23,10 +23,6 @@ class ExecutorRatingDb(BaseDb):
         command = DB_EXECUTORS_RATING_COMMANDS.get("select_all_executors_order_by_pi")
         result = await self.select_all(command=command)
 
-        if result == []:
-            msg = "Таблица executor_rating - пустая"
-            raise Exception(msg)
-
         return result
 
     async def update_performance_indicator_executor(self, data: Dict):
