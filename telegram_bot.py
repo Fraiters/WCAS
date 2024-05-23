@@ -22,8 +22,8 @@ class TelegramBot:
     db = BaseDb()
 
     async def on_startup(self, _):
-        # await self.bot.set_webhook(os.getenv('URL_APP'))
-        await self.bot.delete_webhook()
+        await self.bot.set_webhook(os.getenv('URL_APP'))
+
         await self.db.create_table(command=DB_TASKS_COMMANDS.get('create_task_table'))
         await self.db.create_table(command=DB_REPORTS_COMMANDS.get('create_report_table'))
         await self.db.create_table(command=DB_USERS_COMMANDS.get('create_user_table'))
@@ -54,7 +54,6 @@ class TelegramBot:
                              on_startup=self.on_startup,
                              on_shutdown=self.on_shutdown,
                              skip_updates=True)
-        # executor.start_polling(dispatcher=self.dp, skip_updates=True, on_startup=self.on_startup)
 
 
 if __name__ == '__main__':
