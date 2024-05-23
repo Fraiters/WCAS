@@ -55,7 +55,7 @@ class TelegramBot:
                                on_shutdown=self.on_shutdown,
                                skip_updates=True,
                                host="0.0.0.0",
-                               port=int(os.environ.get("PORT", 5000)))
+                               port=int(os.getenv('PORT')))
 
 
 if __name__ == '__main__':
