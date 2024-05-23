@@ -22,6 +22,8 @@ class TelegramBot:
     db = BaseDb()
 
     async def on_startup(self, _):
+        # await self.bot.set_webhook(os.getenv('URL_APP'))
+        await self.bot.delete_webhook()
         await self.db.create_table(command=DB_TASKS_COMMANDS.get('create_task_table'))
         await self.db.create_table(command=DB_REPORTS_COMMANDS.get('create_report_table'))
         await self.db.create_table(command=DB_USERS_COMMANDS.get('create_user_table'))
@@ -30,6 +32,9 @@ class TelegramBot:
 
         notification = Notification(bot=self.bot)
         asyncio.create_task(notification.check_executor_report())
+
+    async def on_shutdown(self):
+        await self.bot.delete_webhook()
 
     def run(self):
         general_handler = GeneralHandler(bot=self.bot)
@@ -44,7 +49,12 @@ class TelegramBot:
         executor_rating_handler.registration(dp=self.dp)
         unknown_handler.registration(dp=self.dp)
 
-        executor.start_polling(dispatcher=self.dp, skip_updates=True, on_startup=self.on_startup)
+        executor.set_webhook(dispatcher=self.dp,
+                             webhook_path='',
+                             on_startup=self.on_startup,
+                             on_shutdown=self.on_shutdown,
+                             skip_updates=True)
+        # executor.start_polling(dispatcher=self.dp, skip_updates=True, on_startup=self.on_startup)
 
 
 if __name__ == '__main__':
