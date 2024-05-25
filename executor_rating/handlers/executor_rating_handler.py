@@ -59,7 +59,7 @@ class ExecutorRatingHandler:
                 data_item[i] = str(line[i])
             data.append(data_item)
 
-        columns = ["ID Исполнителя", "Показатель эффективности"]
+        columns = ["ID Исполнителя", "Оценка"]
 
         executor_rating_table = text_table_layout(data=data, columns=columns)
 

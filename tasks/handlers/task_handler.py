@@ -43,6 +43,7 @@ class FsmTask(StatesGroup):
     show_by_uuid = State()
 
     delete_task = State()
+    conf_del_task = State()
 
     assign_task = State()
     assign_executor_id = State()
@@ -211,10 +212,23 @@ class TaskHandler:
 
             # Обновление данных у предыдущей связанной задачи
             if self.task.previous_task != "Нет":
+                # находим указанную предыдущую задачу
                 db_previous_task = await self.task_db.select_task_by_uuid(uuid=int(self.task.previous_task))
                 if db_previous_task is not None:
                     old_task = Task()
                     old_task.from_tuple(data=db_previous_task)
+                    # если предыдущая связанная задача уже имеет следующую связанную задачу
+                    if old_task.next_task != "Нет":
+                        # находим следующую задачу у предыдущей
+                        db_next_task = await self.task_db.select_task_by_uuid(uuid=int(old_task.next_task))
+                        next_task = Task()
+                        next_task.from_tuple(data=db_next_task)
+                        # обнуляем предыдущую задачу у следующей, которая связана с предыдущей (указанной)
+                        next_task.previous_task = "Нет"
+                        db_data_next_task = next_task.to_dict()
+                        await self.task_db.update_task_by_uuid(data=db_data_next_task, uuid=int(old_task.next_task))
+
+                    # меняем для указанной предыдущей задачи следующую (ставим текущую, которую изменяем)
                     old_task.next_task = self.task.uuid
                     db_old_task = old_task.to_dict()
                     await self.task_db.update_task_by_uuid(data=db_old_task, uuid=old_task.uuid)
@@ -224,6 +238,19 @@ class TaskHandler:
                 if db_next_task is not None:
                     old_task = Task()
                     old_task.from_tuple(data=db_next_task)
+                    # если следующая связанная задача уже имеет предыдущую связанную задачу
+                    if old_task.previous_task != "Нет":
+                        # находим предыдущую задачу у следующей
+                        db_previous_task = await self.task_db.select_task_by_uuid(uuid=int(old_task.previous_task))
+                        previous_task = Task()
+                        previous_task.from_tuple(data=db_previous_task)
+                        # обнуляем следующую задачу у предыдущей, которая связана со следующей (указанной)
+                        previous_task.next_task = "Нет"
+                        db_data_previous_task = previous_task.to_dict()
+                        await self.task_db.update_task_by_uuid(data=db_data_previous_task,
+                                                               uuid=int(old_task.previous_task))
+
+                    # меняем для указанной следующей задачи предыдущую (ставим текущую, которую изменяем)
                     old_task.previous_task = self.task.uuid
                     db_old_task = old_task.to_dict()
                     await self.task_db.update_task_by_uuid(data=db_old_task, uuid=old_task.uuid)
@@ -260,16 +287,78 @@ class TaskHandler:
                 await message.reply(f'Задачи с id = {uuid} не существует\n'
                                     'Повторите попытку', reply_markup=kb)
             else:
+                self.task = Task()
+                self.task.from_tuple(db_task)
+                # Проверка на связанность с другой задачей
+                if self.task.previous_task != "Нет" or self.task.next_task != "Нет":
+                    async with state.proxy() as data:
+                        data['uuid'] = uuid
+                    await self.fsm_task.conf_del_task.set()
+                    names_button = TASK_BUTTONS.get("prepare") + [(TASK_BUTTONS.get("task")[-1])]
+                    kb = self.task_kb.add(names_button)
+                    await self.bot.send_message(message.from_user.id,
+                                                '!ВНИМАНИЕ!\n'
+                                                'Выбранная задача связана с другой задачей\n'
+                                                'При ее удалении нарушится связь с другой задачей\n'
+                                                'Желаете продолжить?', reply_markup=kb)
+
+                else:
+                    await self.task_db.delete_task(uuid=uuid)
+                    await state.finish()
+                    kb = self.task_kb.add(GENERAL_BUTTONS)
+                    await self.bot.send_message(message.from_user.id, f'Задача с id = {uuid} успешно удалена',
+                                                reply_markup=kb)
+
+        except ValueError:
+            kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
+            await message.reply('Неверный формат записи id\n'
+                                'Повторите попытку', reply_markup=kb)
+
+    async def confirm_delete_task(self, message: Message, state: FSMContext):
+        """ Подтверждение удаления задачи """
+        if message.text == TASK_BUTTONS.get("prepare")[0]:
+            async with state.proxy() as data:
+                uuid = data['uuid']
+
+                # Обновление у предыдущей связанной задачи - следующей связанной задачи
+                if self.task.previous_task != "Нет":
+                    db_previous_task = await self.task_db.select_task_by_uuid(uuid=int(self.task.previous_task))
+                    previous_task = Task()
+                    previous_task.from_tuple(db_previous_task)
+                    previous_task.next_task = "Нет"
+                    db_data = previous_task.to_dict()
+                    await self.task_db.update_task_by_uuid(data=db_data, uuid=int(self.task.previous_task))
+
+                # Обновление у следующей связанной задачи - предыдущей связанной задачи
+                if self.task.next_task != "Нет":
+                    db_next_task = await self.task_db.select_task_by_uuid(uuid=int(self.task.next_task))
+                    next_task = Task()
+                    next_task.from_tuple(db_next_task)
+                    next_task.previous_task = "Нет"
+                    db_data = next_task.to_dict()
+                    await self.task_db.update_task_by_uuid(data=db_data, uuid=int(self.task.next_task))
+
                 await self.task_db.delete_task(uuid=uuid)
                 await state.finish()
                 kb = self.task_kb.add(GENERAL_BUTTONS)
                 await self.bot.send_message(message.from_user.id, f'Задача с id = {uuid} успешно удалена',
                                             reply_markup=kb)
 
-        except ValueError:
-            kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
-            await message.reply('Неверный формат записи id\n'
-                                'Повторите попытку', reply_markup=kb)
+        elif message.text == TASK_BUTTONS.get("prepare")[1]:
+            await state.finish()
+            kb = self.task_kb.add(GENERAL_BUTTONS)
+            await message.reply("Главное меню", reply_markup=kb)
+
+        else:
+            await message.reply(f'Такой команды нет,\n'
+                                'Повторите попытку', reply_markup=ReplyKeyboardRemove())
+            names_button = TASK_BUTTONS.get("prepare") + [(TASK_BUTTONS.get("task")[-1])]
+            kb = self.task_kb.add(names_button)
+            await self.bot.send_message(message.from_user.id,
+                                        '!ВНИМАНИЕ!\n'
+                                        'Выбранная задача связана с другой задачей\n'
+                                        'При ее удалении нарушится связь с другой задачей\n'
+                                        'Желаете продолжить?', reply_markup=kb)
 
     async def assign_task(self, message: Message):
         """ Хендлер для команды 'Назначить задачу' """
@@ -525,6 +614,14 @@ class TaskHandler:
             kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
             await message.reply('Введите id связанной предыдущей задачи', reply_markup=kb)
 
+        else:
+            await message.reply(f'Такой команды нет,\n'
+                                'Повторите попытку', reply_markup=ReplyKeyboardRemove())
+            names_button = TASK_BUTTONS.get("prepare") + [(TASK_BUTTONS.get("task")[-1])]
+            kb = self.task_kb.add(names_button)
+            await self.bot.send_message(message.from_user.id,
+                                        'Желаете назначить предыдущую связанную задачу?', reply_markup=kb)
+
     async def load_previous_task(self, message: Message, state: FSMContext):
         """ Загрузка предыдущей задачи """
         try:
@@ -537,6 +634,14 @@ class TaskHandler:
                                     'Повторите попытку', reply_markup=kb)
                 await self.fsm_task.previous_task.set()
                 return
+
+            elif uuid == self.task.uuid:
+                kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
+                await message.reply(f'Нельзя связывать задачу с самой собой\n'
+                                    'Повторите попытку', reply_markup=kb)
+                await self.fsm_task.previous_task.set()
+                return
+
             else:
                 task = Task()
                 task.from_tuple(data=db_task)
@@ -555,7 +660,7 @@ class TaskHandler:
                         data['previous_task'] = uuid
 
                     await self.fsm_task.check_previous_task.set()
-                    names_button = TASK_BUTTONS.get("check_task") + [(TASK_BUTTONS.get("task")[-1])]
+                    names_button = TASK_BUTTONS.get("prepare") + [(TASK_BUTTONS.get("task")[-1])]
                     kb = self.task_kb.add(names_button)
                     await message.reply('!ВНИМАНИЕ!\n'
                                         'У выбранной предыдущей связанной задачи уже есть связанная следующая задача\n'
@@ -568,7 +673,7 @@ class TaskHandler:
 
     async def check_previous_task(self, message: Message, state: FSMContext):
         """ Проверка предыдущей связанной задачи"""
-        if message.text == TASK_BUTTONS.get("check_task")[1]:
+        if message.text == TASK_BUTTONS.get("prepare")[1]:
             # обнуляем значение предыдущей задачи
             async with state.proxy() as data:
                 data['previous_task'] = None
@@ -576,12 +681,22 @@ class TaskHandler:
             kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
             await message.reply('Введите заново id связанной предыдущей задачи', reply_markup=kb)
 
-        elif message.text == TASK_BUTTONS.get("check_task")[0]:
+        elif message.text == TASK_BUTTONS.get("prepare")[0]:
 
             await self.fsm_task.prepare_next_task.set()
             names_button = TASK_BUTTONS.get("prepare") + [(TASK_BUTTONS.get("task")[-1])]
             kb = self.task_kb.add(names_button)
             await message.reply('Желаете назначить следующую связанную задачу?', reply_markup=kb)
+
+        else:
+            await message.reply(f'Такой команды нет,\n'
+                                'Повторите попытку', reply_markup=ReplyKeyboardRemove())
+            names_button = TASK_BUTTONS.get("prepare") + [(TASK_BUTTONS.get("task")[-1])]
+            kb = self.task_kb.add(names_button)
+            await self.bot.send_message(message.from_user.id,
+                                        '!ВНИМАНИЕ!\n'
+                                        'У выбранной предыдущей связанной задачи уже есть связанная следующая задача\n'
+                                        'Желаете продолжить?', reply_markup=kb)
 
     async def prepare_next_task(self, message: Message):
         """ Подготовка к вводу следующей связанной задачи """
@@ -596,6 +711,14 @@ class TaskHandler:
             kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
             await message.reply('Введите id связанной следующей задачи', reply_markup=kb)
 
+        else:
+            await message.reply(f'Такой команды нет,\n'
+                                'Повторите попытку', reply_markup=ReplyKeyboardRemove())
+            names_button = TASK_BUTTONS.get("prepare") + [(TASK_BUTTONS.get("task")[-1])]
+            kb = self.task_kb.add(names_button)
+            await self.bot.send_message(message.from_user.id,
+                                        'Желаете назначить следующую связанную задачу?', reply_markup=kb)
+
     async def load_next_task(self, message: Message, state: FSMContext):
         """ Загрузка следующей задачи """
         try:
@@ -608,6 +731,14 @@ class TaskHandler:
                                     'Повторите попытку', reply_markup=kb)
                 await self.fsm_task.next_task.set()
                 return
+
+            elif uuid == self.task.uuid:
+                kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
+                await message.reply(f'Нельзя связывать задачу с самой собой\n'
+                                    'Повторите попытку', reply_markup=kb)
+                await self.fsm_task.next_task.set()
+                return
+
             else:
                 task = Task()
                 task.from_tuple(data=db_task)
@@ -654,6 +785,16 @@ class TaskHandler:
             kb = self.task_kb.add(names_button)
             await message.reply('Выберите тип исполнителя', reply_markup=kb)
 
+        else:
+            await message.reply(f'Такой команды нет,\n'
+                                'Повторите попытку', reply_markup=ReplyKeyboardRemove())
+            names_button = TASK_BUTTONS.get("prepare") + [(TASK_BUTTONS.get("task")[-1])]
+            kb = self.task_kb.add(names_button)
+            await self.bot.send_message(message.from_user.id,
+                                        '!ВНИМАНИЕ!\n'
+                                        'У выбранной следующей связанной задачи уже есть связанная предыдущая задача\n'
+                                        'Желаете продолжить?', reply_markup=kb)
+
     async def load_executor_type(self, message: Message, state: FSMContext):
         """ Загрузка типа исполнителя """
         async with state.proxy() as data:
@@ -684,6 +825,14 @@ class TaskHandler:
             await self.fsm_task.executor_id.set()
             kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
             await message.reply('Введите id исполнителя задачи (без знака @)', reply_markup=kb)
+
+        else:
+            await message.reply(f'Такой команды нет,\n'
+                                'Повторите попытку', reply_markup=ReplyKeyboardRemove())
+            names_button = TASK_BUTTONS.get("prepare") + [(TASK_BUTTONS.get("task")[-1])]
+            kb = self.task_kb.add(names_button)
+            await self.bot.send_message(message.from_user.id,
+                                        'Желаете сразу назначить исполнителя задачи?', reply_markup=kb)
 
     async def load_executor_id(self, message: Message, state: FSMContext):
         """ Загрузка id исполнителя """
@@ -732,6 +881,18 @@ class TaskHandler:
                 if db_previous_task is not None:
                     old_task = Task()
                     old_task.from_tuple(data=db_previous_task)
+                    # если предыдущая связанная задача уже имеет следующую связанную задачу
+                    if old_task.next_task != "Нет":
+                        # находим следующую задачу у предыдущей
+                        db_next_task = await self.task_db.select_task_by_uuid(uuid=int(old_task.next_task))
+                        next_task = Task()
+                        next_task.from_tuple(data=db_next_task)
+                        # обнуляем предыдущую задачу у следующей, которая связана с предыдущей (указанной)
+                        next_task.previous_task = "Нет"
+                        db_data_next_task = next_task.to_dict()
+                        await self.task_db.update_task_by_uuid(data=db_data_next_task, uuid=int(old_task.next_task))
+
+                    # меняем для указанной предыдущей задачи следующую (ставим текущую, которую создаем)
                     old_task.next_task = self.task.uuid
                     db_old_task = old_task.to_dict()
                     await self.task_db.update_task_by_uuid(data=db_old_task, uuid=old_task.uuid)
@@ -741,6 +902,19 @@ class TaskHandler:
                 if db_next_task is not None:
                     old_task = Task()
                     old_task.from_tuple(data=db_next_task)
+                    # если следующая связанная задача уже имеет предыдущую связанную задачу
+                    if old_task.previous_task != "Нет":
+                        # находим предыдущую задачу у следующей
+                        db_previous_task = await self.task_db.select_task_by_uuid(uuid=int(old_task.previous_task))
+                        previous_task = Task()
+                        previous_task.from_tuple(data=db_previous_task)
+                        # обнуляем следующую задачу у предыдущей, которая связана со следующей (указанной)
+                        previous_task.next_task = "Нет"
+                        db_data_previous_task = previous_task.to_dict()
+                        await self.task_db.update_task_by_uuid(data=db_data_previous_task,
+                                                               uuid=int(old_task.previous_task))
+
+                    # меняем для указанной следующей задачи предыдущую (ставим текущую, которую создаем)
                     old_task.previous_task = self.task.uuid
                     db_old_task = old_task.to_dict()
                     await self.task_db.update_task_by_uuid(data=db_old_task, uuid=old_task.uuid)
@@ -908,6 +1082,8 @@ class TaskHandler:
         # Удаление задачи
         dp.register_message_handler(callback=self.delete_task,
                                     state=self.fsm_task.delete_task)
+        dp.register_message_handler(callback=self.confirm_delete_task,
+                                    state=self.fsm_task.conf_del_task)
 
         # Назначение задачи
         dp.register_message_handler(callback=self.assign_task,
