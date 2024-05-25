@@ -50,7 +50,7 @@ class Task:
             self.executor_type = executor_type
             self.executor_id = executor_id
 
-    def to_dict(self):
+    def to_dict(self) -> Dict:
         """Перевод из данных 'задачи' в словарь"""
         data = {
             "title": self.title,
