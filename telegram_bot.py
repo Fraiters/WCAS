@@ -4,9 +4,13 @@ from aiogram import Bot
 from aiogram.dispatcher import Dispatcher
 from aiogram.utils import executor
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
+
+from analytics.handlers.analytic_handler import AnalyticHandler
 from db.base_db import BaseDb
-from db.db_settings import DB_TASKS_COMMANDS, DB_REPORTS_COMMANDS, DB_USERS_COMMANDS, DB_EXECUTORS_RATING_COMMANDS
+from db.db_settings import DB_TASKS_COMMANDS, DB_REPORTS_COMMANDS, DB_USERS_COMMANDS, DB_EXECUTORS_RATING_COMMANDS, \
+    DB_EXECUTORS_COMMANDS, DB_ANALYTICS_COMMANDS
 from executor_rating.handlers.executor_rating_handler import ExecutorRatingHandler
+from executors.handlers.executor_handler import ExecutorHandler
 from general.general_handler import GeneralHandler
 from general.unknown_handler import UnknownHandler
 from notification.notification import Notification
@@ -28,6 +32,9 @@ class TelegramBot:
         await self.db.create_table(command=DB_REPORTS_COMMANDS.get('create_report_table'))
         await self.db.create_table(command=DB_USERS_COMMANDS.get('create_user_table'))
         await self.db.create_table(command=DB_EXECUTORS_RATING_COMMANDS.get('create_executor_rating_table'))
+        await self.db.create_table(command=DB_EXECUTORS_COMMANDS.get('create_executor_table'))
+        await self.db.create_table(command=DB_ANALYTICS_COMMANDS.get('create_analytic_table'))
+
         await self.db.close_connection()
 
         notification = Notification(bot=self.bot)
@@ -41,12 +48,16 @@ class TelegramBot:
         task_handler = TaskHandler(bot=self.bot)
         report_handler = ReportHandler(bot=self.bot)
         executor_rating_handler = ExecutorRatingHandler(bot=self.bot)
+        executor_handler = ExecutorHandler(bot=self.bot)
+        analytic_handler = AnalyticHandler(bot=self.bot)
         unknown_handler = UnknownHandler(bot=self.bot)
 
         general_handler.registration(dp=self.dp)
         task_handler.registration(dp=self.dp)
         report_handler.registration(dp=self.dp)
         executor_rating_handler.registration(dp=self.dp)
+        executor_handler.registration(dp=self.dp)
+        analytic_handler.registration(dp=self.dp)
         unknown_handler.registration(dp=self.dp)
 
         executor.start_webhook(dispatcher=self.dp,
