@@ -29,13 +29,13 @@ class ExecutorRatingHandler:
         self.executor_rating = ...  # type: ExecutorRating
 
     # Уровень клавиатуры 1
-    # /Показать_рейтинг, /Обнулить_рейтинг, /Удалить_исполнителя
+    # /Показать_рейтинг, /Обнулить_рейтинг, /Удалить_исполнителя_из_рейтинга
     async def executors_rating(self, message: Message):
         """ Хендлер для команды 'Рейтинг' """
         kb = self.executor_rating_kb.add(EXECUTOR_RATING_BUTTONS.get("executor_rating"))
         await self.bot.send_message(message.from_user.id, 'Чтобы посмотреть рейтинг нажмите на "/Показать_рейтинг"\n\n'
                                                           'Чтобы удалить исполнителя из рейтинга нажмите на '
-                                                          '"/Удалить_исполнителя"\n\n'
+                                                          '"/Удалить_исполнителя_из_рейтинга"\n\n'
                                                           'Для отмены введите команду "/Отмена"', reply_markup=kb)
 
     # Уровень клавиатуры 2
@@ -59,7 +59,7 @@ class ExecutorRatingHandler:
                 data_item[i] = str(line[i])
             data.append(data_item)
 
-        columns = ["ID Исполнителя", "Оценка"]
+        columns = ["Исполнитель", "Оценка"]
 
         executor_rating_table = text_table_layout(data=data, columns=columns)
 
@@ -108,7 +108,7 @@ class ExecutorRatingHandler:
 
         dp.register_message_handler(callback=self.show_executor_rating, commands=['Показать_рейтинг'],
                                     state=None)
-        dp.register_message_handler(callback=self.input_delete_executor, commands=['Удалить_исполнителя'],
+        dp.register_message_handler(callback=self.input_delete_executor, commands=['Удалить_исполнителя_из_рейтинга'],
                                     state=None)
         dp.register_message_handler(callback=self.cancel, commands=['Отмена'],
                                     state='*')

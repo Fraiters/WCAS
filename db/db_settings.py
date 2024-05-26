@@ -74,3 +74,22 @@ DB_EXECUTORS_RATING_COMMANDS = {
                                         'ORDER BY performance_indicator DESC',
     "delete_executor": 'DELETE FROM executor_rating WHERE executor_id = %s'
 }
+
+
+# Команды БД для исполнителей
+DB_EXECUTORS_COMMANDS = {
+    "create_executor_table": 'CREATE TABLE IF NOT EXISTS executors(executor_id TEXT UNIQUE)',
+    "insert_executor": 'INSERT INTO  executors (executor_id) VALUES (%s)',
+    "select_all_executors": 'SELECT executor_id FROM executors',
+    "select_executor_id": 'SELECT executor_id FROM executors WHERE executor_id = %s',
+    "delete_executor": 'DELETE FROM executors WHERE executor_id = %s'
+}
+
+# Команды БД для аналитиков
+DB_ANALYTICS_COMMANDS = {
+    "create_analytic_table": 'CREATE TABLE IF NOT EXISTS analytics(analytic_id TEXT UNIQUE)',
+    "insert_analytic": 'INSERT INTO  analytics (analytic_id) VALUES (%s)',
+    "select_all_analytics": 'SELECT analytic_id FROM analytics',
+    "select_analytic_id": 'SELECT analytic_id FROM analytics WHERE analytic_id = %s',
+    "delete_analytic": 'DELETE FROM analytics WHERE analytic_id = %s'
+}
