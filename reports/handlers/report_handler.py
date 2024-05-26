@@ -4,14 +4,15 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text
 from aiogram.dispatcher.filters.state import StatesGroup, State
 from aiogram.types import Message
+
+from executors.db.executor_db import ExecutorDb
 from reports.keyboards.report_kb import ReportKb
 from aiogram.types import ReplyKeyboardRemove
 from settings import REPORT_BUTTONS, GENERAL_BUTTONS
 from models.report import Report
 from reports.db.report_db import ReportDb
 from tasks.db.task_db import TaskDb
-from user.user_settings import EXECUTORS, ADMINS
-from utils.utils import set_available_users
+from user.user_settings import ADMINS
 
 
 class FsmReport(StatesGroup):
@@ -57,11 +58,11 @@ class ReportHandler:
     async def add_report(self, message: Message):
         """ Хендлер для команды 'Добавить отчет' (Вход в машину состояний) """
         # ограничение на использование хендлера (могут использовать исполнители и админы)
-        users = list(set(EXECUTORS + ADMINS))
 
-        available_users = list(map(int, await set_available_users(users=users)))  # type: List[int]
+        executor_db = ExecutorDb()
+        executor = await executor_db.select_executor_id(executor_id=message.from_user.username.lower())
 
-        if message.from_user.id not in available_users:
+        if executor is None and message.from_user.username.lower() not in ADMINS:
             kb = self.report_kb.add(GENERAL_BUTTONS)
             await self.bot.send_message(message.from_user.id, f'Вы не имеете доступ к добавлению отчета',
                                         reply_markup=kb)
@@ -85,11 +86,11 @@ class ReportHandler:
     async def upd_report(self, message: Message):
         """ Хендлер для команды 'Редактировать отчет' (Вход в машину состояний) """
         # ограничение на использование хендлера (могут использовать исполнители и админы)
-        users = list(set(EXECUTORS + ADMINS))
 
-        available_users = list(map(int, await set_available_users(users=users)))  # type: List[int]
+        executor_db = ExecutorDb()
+        executor = await executor_db.select_executor_id(executor_id=message.from_user.username.lower())
 
-        if message.from_user.id not in available_users:
+        if executor is None and message.from_user.username.lower() not in ADMINS:
             kb = self.report_kb.add(GENERAL_BUTTONS)
             await self.bot.send_message(message.from_user.id, f'Вы не имеете доступ к обновлению отчета',
                                         reply_markup=kb)
@@ -105,11 +106,11 @@ class ReportHandler:
     async def input_delete_report(self, message: Message):
         """ Хендлер для ввода id для удаления отчета """
         # ограничение на использование хендлера (могут использовать исполнители и админы)
-        users = list(set(EXECUTORS + ADMINS))
 
-        available_users = list(map(int, await set_available_users(users=users)))  # type: List[int]
+        executor_db = ExecutorDb()
+        executor = await executor_db.select_executor_id(executor_id=message.from_user.username.lower())
 
-        if message.from_user.id not in available_users:
+        if executor is None and message.from_user.username.lower() not in ADMINS:
             kb = self.report_kb.add(GENERAL_BUTTONS)
             await self.bot.send_message(message.from_user.id, f'Вы не имеете доступ к удалению отчета',
                                         reply_markup=kb)

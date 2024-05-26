@@ -6,8 +6,10 @@ from aiogram.dispatcher.filters.state import StatesGroup, State
 from aiogram.types import Message
 from aiogram.types import ReplyKeyboardRemove
 
+from analytics.db.analytic_db import AnalyticDb
 from executor_rating.db.executor_rating_db import ExecutorRatingDb
 from executor_rating.executor_rating import ExecutorRating
+from executors.db.executor_db import ExecutorDb
 from performance_indicator.general_performance_indicator import GeneralPerformanceIndicator
 from performance_indicator.performance_indicator import PerformanceIndicator
 from settings import TASK_BUTTONS, GENERAL_BUTTONS
@@ -15,8 +17,8 @@ from models.task import Task, TASK_STATUS
 from tasks.db.task_db import TaskDb
 from tasks.keyboards.task_kb import TaskKb
 from user.db.user_db import UserDb
-from user.user_settings import EXECUTORS, ANALYTICS, ADMINS
-from utils.utils import is_datetime, set_available_users
+from user.user_settings import ADMINS
+from utils.utils import is_datetime
 
 
 class FsmTask(StatesGroup):
@@ -80,11 +82,10 @@ class TaskHandler:
     async def add_task(self, message: Message):
         """ Хендлер для команды 'Добавить задачу' (Вход в машину состояний) """
         # ограничение на использование хендлера (могут использовать аналитики и админы)
-        users = list(set(ANALYTICS + ADMINS))
+        analytic_db = AnalyticDb()
+        analytic = await analytic_db.select_analytic_id(analytic_id=message.from_user.username.lower())
 
-        available_users = list(map(int, await set_available_users(users=users)))  # type: List[int]
-
-        if message.from_user.id not in available_users:
+        if analytic is None and message.from_user.username.lower() not in ADMINS:
             kb = self.task_kb.add(GENERAL_BUTTONS)
             await self.bot.send_message(message.from_user.id, f'Вы не имеете доступ к созданию задачи',
                                         reply_markup=kb)
@@ -109,11 +110,10 @@ class TaskHandler:
     async def upd_task(self, message: Message):
         """ Хендлер для команды 'Редактировать задачу' (Вход в машину состояний) """
         # ограничение на использование хендлера (могут использовать аналитики и админы)
-        users = list(set(ANALYTICS + ADMINS))
+        analytic_db = AnalyticDb()
+        analytic = await analytic_db.select_analytic_id(analytic_id=message.from_user.username.lower())
 
-        available_users = list(map(int, await set_available_users(users=users)))  # type: List[int]
-
-        if message.from_user.id not in available_users:
+        if analytic is None and message.from_user.username.lower() not in ADMINS:
             kb = self.task_kb.add(GENERAL_BUTTONS)
             await self.bot.send_message(message.from_user.id, f'Вы не имеете доступ к обновлению задачи',
                                         reply_markup=kb)
@@ -129,11 +129,10 @@ class TaskHandler:
     async def input_delete_task(self, message: Message):
         """ Хендлер для ввода id для удаления задачи """
         # ограничение на использование хендлера (могут использовать аналитики и админы)
-        users = list(set(ANALYTICS + ADMINS))
+        analytic_db = AnalyticDb()
+        analytic = await analytic_db.select_analytic_id(analytic_id=message.from_user.username.lower())
 
-        available_users = list(map(int, await set_available_users(users=users)))  # type: List[int]
-
-        if message.from_user.id not in available_users:
+        if analytic is None and message.from_user.username.lower() not in ADMINS:
             kb = self.task_kb.add(GENERAL_BUTTONS)
             await self.bot.send_message(message.from_user.id, f'Вы не имеете доступ к удалению задачи',
                                         reply_markup=kb)
@@ -156,11 +155,11 @@ class TaskHandler:
     async def input_closing_task(self, message: Message):
         """ Хендлер для ввода id для закрытия задачи """
         # ограничение на использование хендлера (могут использовать исполнители и админы)
-        users = list(set(EXECUTORS + ADMINS))
 
-        available_users = list(map(int, await set_available_users(users=users)))  # type: List[int]
+        executor_db = ExecutorDb()
+        executor = await executor_db.select_executor_id(executor_id=message.from_user.username.lower())
 
-        if message.from_user.id not in available_users:
+        if executor is None and message.from_user.username.lower() not in ADMINS:
             kb = self.task_kb.add(GENERAL_BUTTONS)
             await self.bot.send_message(message.from_user.id, f'Вы не имеете доступ к закрытию задачи',
                                         reply_markup=kb)
@@ -405,7 +404,10 @@ class TaskHandler:
         """ Хендлер для назначения executor_id на задачу """
         executor_id = message.text.lower()
 
-        if executor_id not in EXECUTORS:
+        executor_db = ExecutorDb()
+        db_executor = await executor_db.select_executor_id(executor_id=executor_id)
+
+        if db_executor is None:
             kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
             await message.reply(f'Исполнителя с id = {executor_id} не существует\n'
                                 'Повторите попытку', reply_markup=kb)
@@ -474,20 +476,9 @@ class TaskHandler:
             await message.reply(f'Задачи с id исполнителя = {executor_id} не найдены\n'
                                 'Повторите попытку', reply_markup=kb)
         else:
-            for uuid, title, description, status, complexity, deadline, closing_date, previous_task, next_task, \
-                    executor_type, executor_id in db_tasks:
+            for db_task in db_tasks:
                 task = Task()
-                task.uuid = uuid
-                task.title = title
-                task.description = description
-                task.status = status
-                task.complexity = complexity
-                task.deadline = deadline
-                task.closing_date = closing_date
-                task.previous_task = previous_task
-                task.next_task = next_task
-                task.executor_type = executor_type
-                task.executor_id = executor_id
+                task.from_tuple(db_task)
                 tasks.append(task)
 
             await state.finish()
@@ -840,7 +831,10 @@ class TaskHandler:
         async with state.proxy() as data:
             executor_id = message.text.lower()
 
-            if executor_id not in EXECUTORS:
+            executor_db = ExecutorDb()
+            db_executor = await executor_db.select_executor_id(executor_id=executor_id)
+
+            if db_executor is None:
                 kb = self.task_kb.add([TASK_BUTTONS.get("task")[-1]])
                 await message.reply(f'Исполнителя с id = {executor_id} не существует\n'
                                     'Повторите попытку', reply_markup=kb)

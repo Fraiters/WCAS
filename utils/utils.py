@@ -52,7 +52,7 @@ def text_table_layout(data: List[List[str]], columns: List[str]) -> str:
     text_table_list = []
 
     for column in columns:
-        line = f'{column:{max(max_columns) + 1}}'
+        line = f'{column:{max(max_columns) + 3}}'
         text_table_list.append(line)
     text_table_list.append("\n")
     # разделитель шапки
@@ -81,16 +81,3 @@ def date_time_join(date: str, time: str) -> datetime:
     date_time_object = datetime.strptime(date_time_str, "%d.%m.%Y %H:%M")
 
     return date_time_object
-
-
-async def set_available_users(users: List[str]):
-    """ Установка пользователей с доступом """
-    available_users = []
-    user_db = UserDb()
-
-    for user in users:
-        available_user = await user_db.select_user_id_by_username(username=user)
-        available_users.append(available_user)
-    return available_users
-
-
