@@ -788,12 +788,20 @@ class TaskHandler:
 
     async def load_executor_type(self, message: Message, state: FSMContext):
         """ Загрузка типа исполнителя """
-        async with state.proxy() as data:
-            data['executor_type'] = message.text[1:]
-        await self.fsm_task.prepare_executor_id.set()
-        names_button = TASK_BUTTONS.get("prepare") + [(TASK_BUTTONS.get("task")[-1])]
-        kb = self.task_kb.add(names_button)
-        await message.reply('Желаете сразу назначить исполнителя задачи?', reply_markup=kb)
+
+        if message.text in TASK_BUTTONS.get("executor_type"):
+            async with state.proxy() as data:
+                data['executor_type'] = message.text[1:]
+            await self.fsm_task.prepare_executor_id.set()
+            names_button = TASK_BUTTONS.get("prepare") + [(TASK_BUTTONS.get("task")[-1])]
+            kb = self.task_kb.add(names_button)
+            await message.reply('Желаете сразу назначить исполнителя задачи?', reply_markup=kb)
+        else:
+            await message.reply('Такой команды нет\n'
+                                'Повторите попытку', reply_markup=ReplyKeyboardRemove())
+            names_button = TASK_BUTTONS.get("executor_type") + [(TASK_BUTTONS.get("task")[-1])]
+            kb = self.task_kb.add(names_button)
+            await message.reply('Выберите тип исполнителя', reply_markup=kb)
 
     async def prepare_executor_id(self, message: Message, state: FSMContext):
         """ Подготовка к вводу id исполнителя """
